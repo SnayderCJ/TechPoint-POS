@@ -1,20 +1,27 @@
 services:
-  frontend:
-    build: .
-    ports:
-      - "5173:5173"
-    volumes:
-      - .:/app
-      - /app/node_modules # Esto es CLAVE: le dice a Docker que use sus propios módulos, no los de tu carpeta de Windows
+  db:
+    image: postgres:15-alpine
     environment:
-      - WATCHPACK_POLLING=true
+      - POSTGRES_DB=pos_db
+      - POSTGRES_USER=snayder
+      - POSTGRES_PASSWORD=unemi_pass
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U snayder -d pos_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
 
   backend:
-    build: ./backend
+    build:
+      context: ./Backend
+      dockerfile: Dockerfile
     volumes:
-      - ./backend:/app
+      - ./Backend:/app
     ports:
       - "8000:8000"
-    environment:
-      - DEBUG=1
     command: python manage.py runserver 0.0.0.0:8000
+    depends_on:
+      db:
+        condition: service_healthy 
