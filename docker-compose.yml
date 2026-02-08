@@ -8,3 +8,13 @@ services:
       - /app/node_modules # Esto es CLAVE: le dice a Docker que use sus propios módulos, no los de tu carpeta de Windows
     environment:
       - WATCHPACK_POLLING=true
+
+  backend:
+    build: ./backend
+    volumes:
+      - ./backend:/app
+    ports:
+      - "8000:8000"
+    environment:
+      - DEBUG=1
+    command: python manage.py runserver 0.0.0.0:8000
