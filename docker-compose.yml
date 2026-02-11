@@ -1,10 +1,13 @@
+version: '3.8'
+
 services:
+  # Base de Datos (PostgreSQL)
   db:
     image: postgres:15-alpine
     environment:
       - POSTGRES_DB=pos_db
       - POSTGRES_USER=snayder
-      - POSTGRES_PASSWORD=unemi_pass
+      - POSTGRES_PASSWORD=123
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U snayder -d pos_db"]
       interval: 5s
@@ -13,6 +16,7 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
 
+  # Capa de Lógica (Django + DRF)
   backend:
     build:
       context: ./Backend
@@ -24,4 +28,21 @@ services:
     command: python manage.py runserver 0.0.0.0:8000
     depends_on:
       db:
-        condition: service_healthy 
+        condition: service_healthy
+
+  # Capa de Interfaz (React + Tailwind v4)
+  frontend:
+    build:
+      context: ./Frontend
+      dockerfile: Dockerfile
+    volumes:
+      - ./Frontend:/app
+      - /app/node_modules
+    ports:
+      - "5173:5173"
+    environment:
+      - VITE_API_URL=http://localhost:8000/api
+
+# Sección de Volúmenes Globales
+volumes:
+  postgres_data:
