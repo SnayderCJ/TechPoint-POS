@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { ShoppingCart, Search, Package, CheckCircle } from 'lucide-react';
+import { ShoppingCart, Search, Package, CheckCircle, Zap, Trash2, Sparkles, Cpu } from 'lucide-react';
 
 function PosPage() {
   const [busqueda, setBusqueda] = useState(""); 
@@ -22,7 +22,7 @@ function PosPage() {
   const agregarAlCarrito = (producto) => {
     const enCarrito = carrito.filter(p => p.id === producto.id).length;
     if (enCarrito >= producto.stock) {
-      alert("⚠️ No hay más stock disponible de este producto.");
+      alert("⚠️ Error: No hay stock suficiente.");
       return;
     }
     setCarrito([...carrito, producto]);
@@ -58,9 +58,9 @@ function PosPage() {
         setCarrito([]);
         setShowModal(true);
       } else {
-        alert("Error al procesar la venta.");
+        alert("❌ Error al procesar la venta.");
       }
-    } catch (err) { alert("Error de conexión con el servidor."); }
+    } catch (err) { alert("❌ Error de conexión."); }
   };
 
   const productosFiltrados = productos.filter(p => 
@@ -69,51 +69,74 @@ function PosPage() {
   );
 
   return (
-    <div className="flex flex-col h-full">
-      {/* Header Estilizado */}
-      <header className="bg-gradient-to-r from-teal-600 to-emerald-500 p-8 text-white shadow-xl flex justify-between items-center rounded-b-[3rem]">
-        <div>
-          <h1 className="text-4xl font-black">TechPoint POS</h1>
-          <p className="opacity-90 font-medium">Sistema Profesional - Snayder Cedeño</p>
-        </div>
-        <div className="bg-white/20 backdrop-blur-md p-4 rounded-3xl border border-white/20 text-center min-w-[160px]">
-          <span className="text-xs font-bold uppercase tracking-widest opacity-80">Total Venta</span>
-          <p className="text-3xl font-black">${total.toFixed(2)}</p>
+    <div className="flex flex-col h-full space-y-8 animate-in fade-in duration-700">
+      
+      {/* ---- NUEVO HEADER VIOLETA (Sin rastro de verde) ---- */}
+      <header className="relative bg-slate-900/60 backdrop-blur-2xl border border-white/10 p-10 rounded-[3.5rem] shadow-2xl overflow-hidden">
+        {/* Glow violeta de fondo */}
+        <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-violet-600/20 rounded-full blur-[120px] -translate-y-1/2 translate-x-1/3"></div>
+        
+        <div className="relative z-10 flex flex-col md:flex-row justify-between items-center gap-6">
+          <div className="text-center md:text-left">
+            <h1 className="text-5xl font-black tracking-tighter text-white flex items-center gap-4">
+              <Zap className="text-violet-400 fill-violet-400/20" size={42} />
+              TechPoint <span className="text-violet-500">POS</span>
+            </h1>
+            <p className="text-slate-500 font-bold uppercase tracking-[0.3em] text-[10px] mt-3">
+              Sistema Profesional • Snayder Cedeño • Milagro
+            </p>
+          </div>
+          
+          <div className="bg-slate-950 px-12 py-7 rounded-[2.5rem] border border-violet-500/30 text-center min-w-[240px] shadow-[0_0_30px_rgba(139,92,246,0.15)]">
+            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-violet-400 mb-2 block">Total Venta</span>
+            <p className="text-5xl font-black text-white tracking-tighter">${total.toFixed(2)}</p>
+          </div>
         </div>
       </header>
 
-      <div className="p-8 grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Catálogo */}
-        <div className="lg:col-span-2 space-y-6">
-          <div className="flex items-center justify-between bg-white p-4 rounded-[2rem] shadow-sm border border-slate-100">
-            <h2 className="text-xl font-bold flex items-center gap-2 text-slate-700">
-              <Package className="text-emerald-500" /> Catálogo de Hardware
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
+        <div className="lg:col-span-2 space-y-8">
+          <div className="flex flex-col md:flex-row items-center justify-between gap-6 bg-slate-900/40 backdrop-blur-md p-6 rounded-[2.5rem] border border-white/5">
+            <h2 className="text-xl font-black flex items-center gap-3 text-white uppercase tracking-wider">
+              <Cpu className="text-violet-500" /> Catálogo de Hardware
             </h2>
-            <div className="relative w-64">
-              <Search className="absolute left-3 top-2.5 text-slate-300" size={18} />
+            <div className="relative w-full md:w-96">
+              <Search className="absolute left-5 top-4 text-slate-500" size={20} />
               <input 
-                type="text" placeholder="Buscar..." 
-                className="w-full pl-10 pr-4 py-2 rounded-xl bg-slate-50 border-none focus:ring-2 focus:ring-emerald-500 transition-all text-sm"
+                type="text" placeholder="Buscar componente..." 
+                className="w-full pl-14 pr-6 py-4 rounded-2xl bg-slate-950/80 border border-white/5 text-white placeholder:text-slate-700 focus:ring-2 focus:ring-violet-500/50 transition-all outline-none font-bold text-sm"
                 value={busqueda} onChange={(e) => setBusqueda(e.target.value)}
               />
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
             {productosFiltrados.map(prod => (
-              <div key={prod.id} className="bg-white p-5 rounded-[2.5rem] shadow-sm border border-slate-100 hover:shadow-xl hover:shadow-emerald-500/5 transition-all group relative overflow-hidden">
-                <div className="h-40 bg-slate-50 rounded-3xl mb-4 flex items-center justify-center overflow-hidden border border-slate-50">
-                  <img src={prod.imagen.startsWith('http') ? prod.imagen : `http://localhost:8000${prod.imagen}`} className="w-full h-full object-contain p-4 group-hover:scale-110 transition-transform duration-500" alt="" />
+              <div key={prod.id} className="group relative bg-slate-900/60 backdrop-blur-lg p-7 rounded-[3.5rem] border border-white/5 hover:border-violet-500/40 transition-all duration-500 hover:shadow-[0_0_50px_rgba(139,92,246,0.15)] overflow-hidden">
+                <div className="h-48 bg-slate-950/80 rounded-[2.5rem] mb-6 flex items-center justify-center overflow-hidden border border-white/5">
+                  <img 
+                    src={prod.imagen.startsWith('http') ? prod.imagen : `http://localhost:8000${prod.imagen}`} 
+                    className="w-full h-full object-contain p-6 group-hover:scale-110 transition-transform duration-700" 
+                    alt="" 
+                  />
                 </div>
-                <div className="flex justify-between items-start mb-2">
-                  <span className="text-[10px] font-bold bg-emerald-50 text-emerald-600 px-3 py-1 rounded-full uppercase">{prod.categoria}</span>
-                  <span className={`text-[10px] font-bold ${prod.stock <= 0 ? 'text-red-500' : 'text-slate-400'}`}>Stock: {prod.stock}</span>
+                <div className="flex justify-between items-start mb-4">
+                  <span className="text-[10px] font-black bg-violet-500/10 text-violet-400 border border-violet-500/20 px-4 py-1.5 rounded-full uppercase tracking-widest">
+                    {prod.categoria}
+                  </span>
+                  <span className={`text-[10px] font-black tracking-widest uppercase ${prod.stock <= 3 ? 'text-red-400 animate-pulse' : 'text-slate-500'}`}>
+                    Stock: {prod.stock}
+                  </span>
                 </div>
-                <h3 className="font-bold text-slate-800 leading-tight mb-4 h-10 overflow-hidden">{prod.nombre}</h3>
-                <div className="flex justify-between items-center">
-                  <span className="text-2xl font-black text-slate-800">${parseFloat(prod.precio).toFixed(2)}</span>
-                  <button onClick={() => agregarAlCarrito(prod)} disabled={prod.stock <= 0} className="bg-slate-900 text-white p-3 rounded-2xl hover:bg-emerald-500 transition-all active:scale-90 disabled:opacity-30">
-                    <ShoppingCart size={20} />
+                <h3 className="font-black text-white text-xl leading-tight mb-6 h-14 overflow-hidden">{prod.nombre}</h3>
+                <div className="flex justify-between items-center pt-5 border-t border-white/5">
+                  <span className="text-3xl font-black text-white tracking-tighter">${parseFloat(prod.precio).toFixed(2)}</span>
+                  <button 
+                    onClick={() => agregarAlCarrito(prod)} 
+                    disabled={prod.stock <= 0} 
+                    className="bg-violet-600 text-white p-5 rounded-2xl hover:bg-violet-500 shadow-xl active:scale-90 disabled:opacity-20 transition-all"
+                  >
+                    <ShoppingCart size={24} />
                   </button>
                 </div>
               </div>
@@ -121,60 +144,50 @@ function PosPage() {
           </div>
         </div>
 
-        {/* Carrito Lateral */}
-        <aside className="bg-white p-8 rounded-[3rem] shadow-xl border border-slate-100 h-fit sticky top-8">
-          <div className="flex items-center justify-between mb-8 pb-4 border-b border-slate-50">
-            <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">Resumen</h2>
-            <span className="bg-slate-100 text-slate-500 px-3 py-1 rounded-full text-xs font-bold">{carrito.length} Items</span>
-          </div>
-
-          <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
-            {carrito.length === 0 ? (
-              <p className="text-center text-slate-400 py-12 italic">Carrito vacío</p>
-            ) : (
-              carrito.map((item, idx) => (
-                <div key={idx} className="flex justify-between items-center bg-slate-50 p-3 rounded-2xl border border-slate-100 group">
-                  <div className="flex items-center gap-3">
-                    <img src={item.imagen} className="w-10 h-10 rounded-lg object-contain bg-white border" alt="" />
-                    <div className="max-w-[110px]">
-                      <p className="font-bold text-[11px] truncate">{item.nombre}</p>
-                      <p className="text-[10px] text-slate-500 font-bold">${parseFloat(item.precio).toFixed(2)}</p>
-                    </div>
-                  </div>
-                  <button onClick={() => quitarDelCarrito(item.id)} className="text-slate-300 hover:text-red-500 transition-colors">✕</button>
+        {/* Sidebar Resumen */}
+        <aside className="relative">
+          <div className="sticky top-8 bg-slate-900/80 backdrop-blur-3xl p-8 rounded-[4rem] border border-white/10 shadow-2xl min-h-[600px] flex flex-col overflow-hidden">
+            <h2 className="text-2xl font-black text-white mb-10 flex items-center gap-3">
+              <Sparkles className="text-violet-400" size={26} /> Carrito
+            </h2>
+            <div className="flex-1 space-y-5 overflow-y-auto pr-2 custom-scrollbar">
+              {carrito.length === 0 ? (
+                <div className="h-full flex flex-col items-center justify-center opacity-10 text-center grayscale">
+                  <ShoppingCart size={80} className="mb-6" />
+                  <p className="font-black uppercase tracking-[0.3em] text-sm">Carrito Vacío</p>
                 </div>
-              ))
+              ) : (
+                carrito.map((item, idx) => (
+                  <div key={idx} className="flex justify-between items-center bg-white/5 p-5 rounded-[2rem] border border-white/5">
+                    <p className="font-bold text-white text-xs truncate w-32">{item.nombre}</p>
+                    <span className="text-violet-400 font-black text-[11px]">${parseFloat(item.precio).toFixed(2)}</span>
+                    <button onClick={() => quitarDelCarrito(item.id)} className="text-slate-600 hover:text-red-400"><Trash2 size={16} /></button>
+                  </div>
+                ))
+              )}
+            </div>
+            {carrito.length > 0 && (
+              <div className="mt-10 pt-10 border-t border-white/10 space-y-8">
+                <div className="text-right">
+                  <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em] mb-2">Total Operación</p>
+                  <p className="text-5xl font-black text-white tracking-tighter">${(total * 1.15).toFixed(2)}</p>
+                </div>
+                <button 
+                  onClick={procesarVentaFinal} 
+                  className="w-full bg-gradient-to-br from-violet-600 to-indigo-700 text-white py-6 rounded-[2.5rem] font-black text-xl shadow-2xl hover:-translate-y-1 transition-all"
+                >
+                  EJECUTAR VENTA
+                </button>
+              </div>
             )}
           </div>
-
-          {carrito.length > 0 && (
-            <div className="mt-8 pt-6 border-t border-slate-100 space-y-4">
-              <div className="flex justify-between items-end">
-                <span className="text-slate-400 font-bold text-sm">Total Final</span>
-                <span className="text-3xl font-black text-emerald-600">${(total * 1.15).toFixed(2)}</span>
-              </div>
-              <button onClick={procesarVentaFinal} className="w-full bg-slate-900 text-white py-4 rounded-3xl font-black shadow-lg hover:shadow-emerald-500/20 hover:bg-emerald-600 transition-all active:scale-95">
-                FINALIZAR VENTA
-              </button>
-            </div>
-          )}
         </aside>
       </div>
 
-      {/* Modal Éxito */}
-      {showModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4">
-          <div className="bg-white rounded-[3rem] p-10 text-center max-w-sm w-full shadow-2xl relative overflow-hidden">
-            <div className="h-2 bg-emerald-500 absolute top-0 left-0 right-0"></div>
-            <div className="bg-emerald-100 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6">
-              <CheckCircle className="text-emerald-500" size={40} />
-            </div>
-            <h3 className="text-2xl font-black text-slate-800 mb-2">¡Venta Exitosa!</h3>
-            <p className="text-slate-400 font-medium mb-8 text-sm">El inventario se ha actualizado correctamente en la base de datos.</p>
-            <button onClick={() => setShowModal(false)} className="w-full bg-slate-900 text-white py-4 rounded-2xl font-bold">Continuar</button>
-          </div>
-        </div>
-      )}
+      <style>{`
+        .custom-scrollbar::-webkit-scrollbar { width: 5px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background-color: #1e1b4b; border-radius: 20px; }
+      `}</style>
     </div>
   );
 }
