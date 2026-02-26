@@ -2,22 +2,23 @@ import React, { useState } from 'react';
 import { LayoutDashboard, Package, History, Settings, LogOut, Laptop, Sun, Moon, Menu, X } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 
-const Sidebar = ({ isDarkMode, toggleTheme }) => {
-  const [isOpen, setIsOpen] = useState(false); // Estado para el menú móvil
+const Sidebar = ({ isDarkMode, toggleTheme, user, logout }) => {
+  const [isOpen, setIsOpen] = useState(false);
   const location = useLocation();
 
   const toggleMenu = () => setIsOpen(!isOpen);
   
+  // Definición de rutas con acceso por roles
   const menuItems = [
-    { name: 'Panel de Ventas', path: '/', icon: <LayoutDashboard size={20} /> },
-    { name: 'Inventario', path: '/inventario', icon: <Package size={20} /> },
-    { name: 'Historial', path: '/historial', icon: <History size={20} /> },
-    { name: 'Configuración', path: '/ajustes', icon: <Settings size={20} /> }, 
+    { name: 'Panel de Ventas', path: '/', icon: <LayoutDashboard size={20} />, roles: ['admin', 'cashier'] },
+    { name: 'Inventario', path: '/inventario', icon: <Package size={20} />, roles: ['admin'] },
+    { name: 'Historial', path: '/historial', icon: <History size={20} />, roles: ['admin'] },
+    { name: 'Configuración', path: '/ajustes', icon: <Settings size={20} />, roles: ['admin'] }, 
   ];
 
   return (
     <>
-      {/* --- BOTÓN HAMBURGUESA (Solo visible en móvil) --- */}
+      {/* --- BOTÓN HAMBURGUESA (Móvil) --- */}
       <button 
         onClick={toggleMenu}
         className={`fixed top-6 left-6 p-3 rounded-xl z-[70] md:hidden shadow-lg transition-all active:scale-95 ${
@@ -29,7 +30,7 @@ const Sidebar = ({ isDarkMode, toggleTheme }) => {
         {isOpen ? <X size={24} /> : <Menu size={24} />}
       </button>
 
-      {/* --- OVERLAY (Fondo oscuro al abrir en móvil) --- */}
+      {/* --- OVERLAY (Móvil) --- */}
       {isOpen && (
         <div 
           onClick={toggleMenu} 
@@ -48,7 +49,7 @@ const Sidebar = ({ isDarkMode, toggleTheme }) => {
         
         {/* Brand / Logo */}
         <div className="p-8">
-          <div className="flex items-center gap-3 group">
+          <div className="flex items-center gap-3">
             <div className={`p-2.5 rounded-2xl text-white shadow-sm transition-all ${
               isDarkMode ? "bg-violet-600 shadow-violet-900/20" : "bg-violet-600 shadow-violet-200"
             }`}>
@@ -59,33 +60,35 @@ const Sidebar = ({ isDarkMode, toggleTheme }) => {
                 TechPoint
               </span>
               <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-1">
-                POS System
+                {user?.role === 'admin' ? 'Admin Mode' : 'Cashier Terminal'}
               </span>
             </div>
           </div>
         </div>
 
-        {/* Navigation */}
+        {/* Navigation - FILTRADA POR ROL */}
         <nav className="flex-1 px-4 space-y-1.5 mt-2">
-          {menuItems.map((item) => {
-            const isActive = location.pathname === item.path;
-            return (
-              <Link
-                key={item.path}
-                to={item.path}
-                onClick={() => setIsOpen(false)} // Cierra el menú al navegar en móvil
-                className={`flex items-center gap-4 px-5 py-4 rounded-2xl font-bold transition-all duration-200 group ${
-                  isActive 
-                  ? (isDarkMode ? "text-white bg-white/5 border border-white/10" : "text-violet-600 bg-violet-50 border border-violet-100") 
-                  : (isDarkMode ? "text-slate-500 hover:text-white hover:bg-white/5" : "text-slate-400 hover:text-slate-900 hover:bg-slate-50")
-                }`}
-              >
-                <span className={`${isActive ? "text-violet-500" : "text-slate-400 group-hover:text-violet-500 transition-colors"}`}>
-                  {item.icon}
-                </span>
-                <span className="text-sm tracking-tight">{item.name}</span>
-              </Link>
-            );
+          {menuItems
+            .filter(item => item.roles.includes(user?.role)) // 👈 Filtra según el rol del usuario
+            .map((item) => {
+              const isActive = location.pathname === item.path;
+              return (
+                <Link
+                  key={item.path}
+                  to={item.path}
+                  onClick={() => setIsOpen(false)}
+                  className={`flex items-center gap-4 px-5 py-4 rounded-2xl font-bold transition-all duration-200 group ${
+                    isActive 
+                    ? (isDarkMode ? "text-white bg-white/5 border border-white/10" : "text-violet-600 bg-violet-50 border border-violet-100") 
+                    : (isDarkMode ? "text-slate-500 hover:text-white hover:bg-white/5" : "text-slate-400 hover:text-slate-900 hover:bg-slate-50")
+                  }`}
+                >
+                  <span className={`${isActive ? "text-violet-500" : "text-slate-400 group-hover:text-violet-500 transition-colors"}`}>
+                    {item.icon}
+                  </span>
+                  <span className="text-sm tracking-tight">{item.name}</span>
+                </Link>
+              );
           })}
         </nav>
 
@@ -119,18 +122,21 @@ const Sidebar = ({ isDarkMode, toggleTheme }) => {
              <div className={`w-10 h-10 rounded-2xl border flex items-center justify-center text-xs font-black transition-colors shadow-inner ${
                isDarkMode ? "bg-slate-800 border-slate-700 text-violet-400" : "bg-white border-slate-200 text-violet-600"
              }`}>
-               SC
+               {user?.name?.substring(0, 2).toUpperCase() || 'SC'}
              </div>
              <div className="overflow-hidden">
                <p className={`text-xs font-black truncate ${isDarkMode ? "text-slate-200" : "text-slate-900"}`}>
-                 Snayder Cedeño
+                 {user?.name || 'Snayder Cedeño'}
                </p>
                <p className="text-[10px] font-bold text-slate-500 truncate uppercase tracking-tighter">
-                 UNEMI • Milagro
+                 {user?.institution || 'UNEMI • Milagro'}
                </p>
              </div>
           </div>
-          <button className="flex items-center gap-3 px-5 py-3.5 w-full rounded-2xl text-slate-500 hover:bg-red-500/10 hover:text-red-500 transition-all font-bold text-[11px] uppercase tracking-widest">
+          <button 
+            onClick={logout} // 👈 Conectado a la función logout de App.jsx
+            className="flex items-center gap-3 px-5 py-3.5 w-full rounded-2xl text-slate-500 hover:bg-red-500/10 hover:text-red-500 transition-all font-bold text-[11px] uppercase tracking-widest"
+          >
             <LogOut size={16} />
             <span>Cerrar Sesión</span>
           </button>

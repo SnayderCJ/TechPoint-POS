@@ -3,6 +3,27 @@ from rest_framework.response import Response
 from django.db import transaction
 from .models import Producto, Venta, DetalleVenta
 from .serializers import ProductoSerializer, VentaSerializer
+from django.contrib.auth import authenticate
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework import status
+
+class LoginView(APIView):
+    def post(self, request):
+        username = request.data.get('username')
+        password = request.data.get('password')
+        
+        # authenticate verifica contra la tabla auth_user de PostgreSQL
+        user = authenticate(username=username, password=password)
+        
+        if user is not None:
+            return Response({
+                'name': user.first_name if user.first_name else user.username,
+                'role': 'admin' if user.is_superuser else 'cashier',
+                'institution': 'UNEMI • TechPoint'
+            }, status=status.HTTP_200_OK)
+        else:
+            return Response({'error': 'Credenciales incorrectas'}, status=status.HTTP_401_UNAUTHORIZED)
 
 # Vista para el catálogo de productos
 class ProductoViewSet(viewsets.ModelViewSet):
