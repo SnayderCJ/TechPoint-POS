@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { ShoppingCart, Search, Package, CheckCircle, Zap, Trash2, Sparkles, Cpu } from 'lucide-react';
 
-function PosPage() {
+function PosPage({ isDarkMode }) {
   const [busqueda, setBusqueda] = useState(""); 
   const [productos, setProductos] = useState([]);
   const [loading, setLoading] = useState(true); 
@@ -69,74 +69,108 @@ function PosPage() {
   );
 
   return (
-    <div className="flex flex-col h-full space-y-8 animate-in fade-in duration-700">
+    <div className="flex flex-col h-full space-y-8 animate-in fade-in slide-in-from-top-4 duration-700">
       
-      {/* ---- NUEVO HEADER VIOLETA (Sin rastro de verde) ---- */}
-      <header className="relative bg-slate-900/60 backdrop-blur-2xl border border-white/10 p-10 rounded-[3.5rem] shadow-2xl overflow-hidden">
-        {/* Glow violeta de fondo */}
-        <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-violet-600/20 rounded-full blur-[120px] -translate-y-1/2 translate-x-1/3"></div>
+      {/* ---- Header SaaS Profesional ---- */}
+      <header className={`relative transition-all duration-500 border p-8 rounded-[2.5rem] shadow-xl overflow-hidden ${
+        isDarkMode 
+          ? "bg-slate-900/60 backdrop-blur-xl border-white/10 shadow-black/20" 
+          : "bg-white border-slate-200 shadow-slate-200/50"
+      }`}>
+        {/* Sutil toque morado de fondo (solo en Dark) */}
+        {isDarkMode && <div className="absolute top-0 right-0 w-[400px] h-[400px] bg-violet-600/10 rounded-full blur-[100px] -translate-y-1/2 translate-x-1/3"></div>}
         
         <div className="relative z-10 flex flex-col md:flex-row justify-between items-center gap-6">
           <div className="text-center md:text-left">
-            <h1 className="text-5xl font-black tracking-tighter text-white flex items-center gap-4">
-              <Zap className="text-violet-400 fill-violet-400/20" size={42} />
-              TechPoint <span className="text-violet-500">POS</span>
+            <h1 className={`text-4xl font-black tracking-tight flex items-center gap-3 ${isDarkMode ? "text-white" : "text-slate-900"}`}>
+              <Zap className="text-violet-500" size={32} />
+              TechPoint <span className="text-violet-600">POS</span>
             </h1>
-            <p className="text-slate-500 font-bold uppercase tracking-[0.3em] text-[10px] mt-3">
-              Sistema Profesional • Snayder Cedeño • Milagro
+            <p className="text-slate-500 font-semibold uppercase tracking-[0.2em] text-[10px] mt-2">
+              Software de Gestión • Snayder Cedeño • Milagro, Ecuador
             </p>
           </div>
           
-          <div className="bg-slate-950 px-12 py-7 rounded-[2.5rem] border border-violet-500/30 text-center min-w-[240px] shadow-[0_0_30px_rgba(139,92,246,0.15)]">
-            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-violet-400 mb-2 block">Total Venta</span>
-            <p className="text-5xl font-black text-white tracking-tighter">${total.toFixed(2)}</p>
+          <div className={`px-10 py-5 rounded-3xl border text-center min-w-[200px] transition-all ${
+            isDarkMode ? "bg-slate-950 border-violet-500/30" : "bg-slate-50 border-slate-200"
+          }`}>
+            <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-1 block">Subtotal</span>
+            <p className={`text-4xl font-black tracking-tighter ${isDarkMode ? "text-white" : "text-violet-600"}`}>
+              ${total.toFixed(2)}
+            </p>
           </div>
         </div>
       </header>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
-        <div className="lg:col-span-2 space-y-8">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-6 bg-slate-900/40 backdrop-blur-md p-6 rounded-[2.5rem] border border-white/5">
-            <h2 className="text-xl font-black flex items-center gap-3 text-white uppercase tracking-wider">
-              <Cpu className="text-violet-500" /> Catálogo de Hardware
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        {/* ---- Catálogo de Inventario ---- */}
+        <div className="lg:col-span-2 space-y-6">
+          <div className={`flex flex-col md:flex-row items-center justify-between gap-4 p-5 rounded-3xl border transition-all ${
+            isDarkMode ? "bg-slate-900/40 border-white/5" : "bg-white border-slate-200 shadow-sm"
+          }`}>
+            <h2 className={`text-lg font-bold flex items-center gap-2 uppercase tracking-wide ${isDarkMode ? "text-slate-200" : "text-slate-700"}`}>
+              <Package className="text-violet-500" size={20} /> Inventario
             </h2>
-            <div className="relative w-full md:w-96">
-              <Search className="absolute left-5 top-4 text-slate-500" size={20} />
+            <div className="relative w-full md:w-80">
+              <Search className="absolute left-4 top-3 text-slate-400" size={18} />
               <input 
-                type="text" placeholder="Buscar componente..." 
-                className="w-full pl-14 pr-6 py-4 rounded-2xl bg-slate-950/80 border border-white/5 text-white placeholder:text-slate-700 focus:ring-2 focus:ring-violet-500/50 transition-all outline-none font-bold text-sm"
+                type="text" placeholder="Filtrar por nombre o categoría..." 
+                className={`w-full pl-11 pr-5 py-2.5 rounded-xl border outline-none transition-all font-medium text-sm ${
+                  isDarkMode 
+                  ? "bg-slate-950 border-white/10 text-white focus:border-violet-500/50" 
+                  : "bg-slate-50 border-slate-200 text-slate-900 focus:border-violet-400 focus:bg-white"
+                }`}
                 value={busqueda} onChange={(e) => setBusqueda(e.target.value)}
               />
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
             {productosFiltrados.map(prod => (
-              <div key={prod.id} className="group relative bg-slate-900/60 backdrop-blur-lg p-7 rounded-[3.5rem] border border-white/5 hover:border-violet-500/40 transition-all duration-500 hover:shadow-[0_0_50px_rgba(139,92,246,0.15)] overflow-hidden">
-                <div className="h-48 bg-slate-950/80 rounded-[2.5rem] mb-6 flex items-center justify-center overflow-hidden border border-white/5">
+              <div key={prod.id} className={`group relative p-6 rounded-[2rem] border transition-all duration-300 ${
+                isDarkMode 
+                ? "bg-slate-900/60 border-white/5 hover:border-violet-500/40 shadow-xl shadow-black/20" 
+                : "bg-white border-slate-200 hover:border-violet-300 shadow-sm hover:shadow-md"
+              }`}>
+                <div className={`h-44 rounded-2xl mb-5 flex items-center justify-center overflow-hidden border transition-all ${
+                  isDarkMode ? "bg-slate-950/50 border-white/5" : "bg-slate-50 border-slate-100"
+                }`}>
                   <img 
                     src={prod.imagen.startsWith('http') ? prod.imagen : `http://localhost:8000${prod.imagen}`} 
-                    className="w-full h-full object-contain p-6 group-hover:scale-110 transition-transform duration-700" 
+                    className="w-full h-full object-contain p-6 group-hover:scale-105 transition-transform duration-500" 
                     alt="" 
                   />
                 </div>
-                <div className="flex justify-between items-start mb-4">
-                  <span className="text-[10px] font-black bg-violet-500/10 text-violet-400 border border-violet-500/20 px-4 py-1.5 rounded-full uppercase tracking-widest">
+                
+                <div className="flex justify-between items-center mb-3">
+                  <span className={`text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-wider ${
+                    isDarkMode ? "bg-violet-500/10 text-violet-400" : "bg-violet-50 text-violet-600"
+                  }`}>
                     {prod.categoria}
                   </span>
-                  <span className={`text-[10px] font-black tracking-widest uppercase ${prod.stock <= 3 ? 'text-red-400 animate-pulse' : 'text-slate-500'}`}>
+                  <span className={`text-[10px] font-bold uppercase ${
+                    prod.stock <= 3 ? "text-red-500" : "text-slate-500"
+                  }`}>
                     Stock: {prod.stock}
                   </span>
                 </div>
-                <h3 className="font-black text-white text-xl leading-tight mb-6 h-14 overflow-hidden">{prod.nombre}</h3>
-                <div className="flex justify-between items-center pt-5 border-t border-white/5">
-                  <span className="text-3xl font-black text-white tracking-tighter">${parseFloat(prod.precio).toFixed(2)}</span>
+
+                <h3 className={`font-bold text-lg leading-tight mb-5 h-12 overflow-hidden transition-colors ${
+                  isDarkMode ? "text-white group-hover:text-violet-400" : "text-slate-800 group-hover:text-violet-600"
+                }`}>
+                  {prod.nombre}
+                </h3>
+
+                <div className={`flex justify-between items-center pt-4 border-t ${isDarkMode ? "border-white/5" : "border-slate-100"}`}>
+                  <span className={`text-2xl font-black ${isDarkMode ? "text-white" : "text-slate-900"}`}>
+                    ${parseFloat(prod.precio).toFixed(2)}
+                  </span>
                   <button 
                     onClick={() => agregarAlCarrito(prod)} 
                     disabled={prod.stock <= 0} 
-                    className="bg-violet-600 text-white p-5 rounded-2xl hover:bg-violet-500 shadow-xl active:scale-90 disabled:opacity-20 transition-all"
+                    className="bg-violet-600 text-white p-3.5 rounded-xl hover:bg-violet-500 shadow-lg shadow-violet-600/20 active:scale-95 disabled:opacity-30 transition-all"
                   >
-                    <ShoppingCart size={24} />
+                    <ShoppingCart size={20} />
                   </button>
                 </div>
               </div>
@@ -144,39 +178,58 @@ function PosPage() {
           </div>
         </div>
 
-        {/* Sidebar Resumen */}
-        <aside className="relative">
-          <div className="sticky top-8 bg-slate-900/80 backdrop-blur-3xl p-8 rounded-[4rem] border border-white/10 shadow-2xl min-h-[600px] flex flex-col overflow-hidden">
-            <h2 className="text-2xl font-black text-white mb-10 flex items-center gap-3">
-              <Sparkles className="text-violet-400" size={26} /> Carrito
+        {/* ---- Carrito Estilo Lateral Clean ---- */}
+        <aside>
+          <div className={`sticky top-8 p-8 rounded-[2.5rem] border transition-all h-fit min-h-[600px] flex flex-col ${
+            isDarkMode 
+            ? "bg-slate-900/80 backdrop-blur-xl border-white/10 shadow-2xl" 
+            : "bg-white border-slate-200 shadow-xl shadow-slate-200/50"
+          }`}>
+            <h2 className={`text-xl font-bold mb-8 flex items-center gap-2 ${isDarkMode ? "text-white" : "text-slate-800"}`}>
+              <Sparkles className="text-violet-500" size={20} /> Resumen de Orden
             </h2>
-            <div className="flex-1 space-y-5 overflow-y-auto pr-2 custom-scrollbar">
+            
+            <div className="flex-1 space-y-4 overflow-y-auto pr-2 custom-scrollbar">
               {carrito.length === 0 ? (
-                <div className="h-full flex flex-col items-center justify-center opacity-10 text-center grayscale">
-                  <ShoppingCart size={80} className="mb-6" />
-                  <p className="font-black uppercase tracking-[0.3em] text-sm">Carrito Vacío</p>
+                <div className="h-full flex flex-col items-center justify-center opacity-20 text-center py-20">
+                  <ShoppingCart size={64} className="mb-4" />
+                  <p className="font-bold uppercase tracking-widest text-xs">Sin Productos</p>
                 </div>
               ) : (
                 carrito.map((item, idx) => (
-                  <div key={idx} className="flex justify-between items-center bg-white/5 p-5 rounded-[2rem] border border-white/5">
-                    <p className="font-bold text-white text-xs truncate w-32">{item.nombre}</p>
-                    <span className="text-violet-400 font-black text-[11px]">${parseFloat(item.precio).toFixed(2)}</span>
-                    <button onClick={() => quitarDelCarrito(item.id)} className="text-slate-600 hover:text-red-400"><Trash2 size={16} /></button>
+                  <div key={idx} className={`flex justify-between items-center p-4 rounded-2xl border transition-all ${
+                    isDarkMode ? "bg-white/5 border-white/5" : "bg-slate-50 border-slate-100"
+                  }`}>
+                    <div className="flex items-center gap-3 overflow-hidden">
+                      <div className={`w-10 h-10 rounded-lg p-1 shrink-0 ${isDarkMode ? "bg-slate-950" : "bg-white border"}`}>
+                        <img src={item.imagen} className="w-full h-full object-contain" alt="" />
+                      </div>
+                      <div className="truncate">
+                        <p className={`font-bold text-xs truncate ${isDarkMode ? "text-white" : "text-slate-900"}`}>{item.nombre}</p>
+                        <p className="text-[10px] text-violet-500 font-bold uppercase">${parseFloat(item.precio).toFixed(2)}</p>
+                      </div>
+                    </div>
+                    <button onClick={() => quitarDelCarrito(item.id)} className="text-slate-400 hover:text-red-500 transition-colors ml-2">
+                      <Trash2 size={16} />
+                    </button>
                   </div>
                 ))
               )}
             </div>
+
             {carrito.length > 0 && (
-              <div className="mt-10 pt-10 border-t border-white/10 space-y-8">
-                <div className="text-right">
-                  <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em] mb-2">Total Operación</p>
-                  <p className="text-5xl font-black text-white tracking-tighter">${(total * 1.15).toFixed(2)}</p>
+              <div className={`mt-8 pt-8 border-t space-y-6 ${isDarkMode ? "border-white/10" : "border-slate-100"}`}>
+                <div className="flex justify-between items-end">
+                  <span className="text-slate-500 font-bold text-[10px] uppercase tracking-widest">Total Final (IVA Incl.)</span>
+                  <p className={`text-4xl font-black tracking-tighter ${isDarkMode ? "text-white" : "text-slate-900"}`}>
+                    ${(total * 1.15).toFixed(2)}
+                  </p>
                 </div>
                 <button 
                   onClick={procesarVentaFinal} 
-                  className="w-full bg-gradient-to-br from-violet-600 to-indigo-700 text-white py-6 rounded-[2.5rem] font-black text-xl shadow-2xl hover:-translate-y-1 transition-all"
+                  className="w-full bg-violet-600 text-white py-5 rounded-2xl font-bold text-sm shadow-xl shadow-violet-600/30 hover:bg-violet-500 transition-all active:scale-95 uppercase tracking-widest"
                 >
-                  EJECUTAR VENTA
+                  Finalizar Operación
                 </button>
               </div>
             )}
@@ -184,9 +237,33 @@ function PosPage() {
         </aside>
       </div>
 
+      {/* ---- Modal Success Clean ---- */}
+      {showModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4">
+          <div className={`rounded-[3rem] p-12 text-center max-w-sm w-full shadow-2xl border transition-all ${
+            isDarkMode ? "bg-slate-900 border-white/10" : "bg-white border-slate-200"
+          }`}>
+            <div className="bg-violet-500/10 w-24 h-24 rounded-full flex items-center justify-center mx-auto mb-8 border border-violet-500/20">
+              <CheckCircle className="text-violet-500" size={48} />
+            </div>
+            <h3 className={`text-2xl font-bold mb-2 ${isDarkMode ? "text-white" : "text-slate-900"}`}>¡Venta Registrada!</h3>
+            <p className="text-slate-500 font-medium mb-10 text-xs uppercase tracking-widest">Base de Datos Actualizada</p>
+            <button 
+              onClick={() => setShowModal(false)} 
+              className="w-full bg-violet-600 text-white py-4 rounded-2xl font-bold uppercase text-xs tracking-[0.2em] shadow-lg shadow-violet-600/20 hover:bg-violet-500 transition-all"
+            >
+              Continuar
+            </button>
+          </div>
+        </div>
+      )}
+
       <style>{`
-        .custom-scrollbar::-webkit-scrollbar { width: 5px; }
-        .custom-scrollbar::-webkit-scrollbar-thumb { background-color: #1e1b4b; border-radius: 20px; }
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { 
+          background-color: ${isDarkMode ? "#1e1b4b" : "#cbd5e1"}; 
+          border-radius: 10px; 
+        }
       `}</style>
     </div>
   );
