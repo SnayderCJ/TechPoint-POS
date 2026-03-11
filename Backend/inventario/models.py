@@ -21,3 +21,13 @@ class DetalleVenta(models.Model):
     producto = models.ForeignKey(Producto, on_delete=models.PROTECT)
     cantidad = models.PositiveIntegerField(default=1)
     precio_unitario = models.DecimalField(max_digits=10, decimal_places=2)
+
+class GlobalConfig(models.Model):
+    nombre_negocio = models.CharField(max_length=100, default="TechPoint POS")
+    iva_porcentaje = models.DecimalField(max_digits=5, decimal_places=2, default=15.00)
+    direccion = models.CharField(max_length=255, default="Milagro, Guayas, Ecuador")
+    last_backup = models.DateTimeField(auto_now=True)
+
+    def save(self, *args, **kwargs):
+        self.pk = 1  
+        super(GlobalConfig, self).save(*args, **kwargs)

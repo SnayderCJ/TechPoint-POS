@@ -1,22 +1,27 @@
 from rest_framework import serializers
-from .models import Producto, Venta, DetalleVenta
+from .models import Producto, Venta, DetalleVenta, GlobalConfig
 
 class ProductoSerializer(serializers.ModelSerializer):
     class Meta:
         model = Producto
         fields = '__all__'
 
-# ESTO ES LO QUE FALTA PARA EL HISTORIAL
 class DetalleVentaSerializer(serializers.ModelSerializer):
-    producto_nombre = serializers.ReadOnlyField(source='producto.nombre')
+    nombre = serializers.ReadOnlyField(source='producto.nombre')
+    precio = serializers.ReadOnlyField(source='producto.precio')
 
     class Meta:
         model = DetalleVenta
-        fields = ['id', 'producto', 'producto_nombre', 'cantidad', 'precio_unitario']
+        fields = ['id', 'nombre', 'cantidad', 'precio']
 
 class VentaSerializer(serializers.ModelSerializer):
-    detalles = DetalleVentaSerializer(many=True, read_only=True)
+    items = DetalleVentaSerializer(many=True, read_only=True, source='detalles')
 
     class Meta:
         model = Venta
-        fields = ['id', 'fecha', 'total', 'detalles']
+        fields = ['id', 'fecha', 'total', 'items']
+
+class GlobalConfigSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = GlobalConfig
+        fields = ['nombre_negocio', 'iva_porcentaje', 'direccion', 'last_backup']

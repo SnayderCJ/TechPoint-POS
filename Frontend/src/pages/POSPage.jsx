@@ -1,12 +1,16 @@
 import { useState, useEffect } from 'react';
-import { ShoppingCart, Search, Package, CheckCircle, Zap, Trash2, Sparkles, Cpu } from 'lucide-react';
+import { ShoppingCart, Search, Package, CheckCircle, Zap, Trash2, Sparkles, Cpu, Loader2 } from 'lucide-react';
 
-function PosPage({ isDarkMode }) {
+function PosPage({ isDarkMode, config }) { // 
   const [busqueda, setBusqueda] = useState(""); 
   const [productos, setProductos] = useState([]);
   const [loading, setLoading] = useState(true); 
   const [carrito, setCarrito] = useState([]);
   const [showModal, setShowModal] = useState(false);
+
+  // Variables dinámicas desde la base de datos de Milagro
+  const nombreEmpresa = config?.nombre_negocio || "TechPoint";
+  const ivaPorcentaje = parseFloat(config?.iva_porcentaje || 15);
 
   const fetchProductos = async () => {
     try {
@@ -37,7 +41,11 @@ function PosPage({ isDarkMode }) {
     }
   };
 
-  const total = carrito.reduce((acc, p) => acc + parseFloat(p.precio), 0);
+  // Subtotal (Suma de precios base)
+  const subtotalTotal = carrito.reduce((acc, p) => acc + parseFloat(p.precio), 0);
+  
+  // 🚀 Cálculo Dinámico de Impuestos basado en la Configuración Global
+  const totalConIva = (subtotalTotal * (1 + (ivaPorcentaje / 100))).toFixed(2);
 
   const procesarVentaFinal = async () => {
     const idsUnicos = [...new Set(carrito.map(p => p.id))];
@@ -50,7 +58,10 @@ function PosPage({ isDarkMode }) {
       const response = await fetch('http://localhost:8000/api/ventas/', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ total: (total * 1.15).toFixed(2), items })
+        body: JSON.stringify({ 
+          total: totalConIva, // 👈 Enviamos el total recalculado dinámicamente
+          items 
+        })
       });
 
       if (response.ok) {
@@ -71,13 +82,12 @@ function PosPage({ isDarkMode }) {
   return (
     <div className="flex flex-col space-y-8 animate-in fade-in slide-in-from-top-4 duration-700 pb-20">
       
-      {/* ---- Header SaaS Profesional (Ajustado para no cortarse) ---- */}
+      {/* ---- Header Dinámico ---- */}
       <header className={`relative transition-all duration-500 border p-8 md:p-12 rounded-[2.5rem] md:rounded-[3.5rem] shadow-2xl overflow-hidden shrink-0 ${
         isDarkMode 
           ? "bg-slate-900/80 backdrop-blur-xl border-white/10 shadow-black/40" 
           : "bg-white border-slate-200 shadow-slate-300/50"
       }`}>
-        {/* Glow de fondo */}
         {isDarkMode && <div className="absolute top-0 right-0 w-[400px] h-[400px] bg-violet-600/10 rounded-full blur-[100px] -translate-y-1/2 translate-x-1/3"></div>}
         
         <div className="relative z-10 flex flex-col md:flex-row justify-between items-center gap-8">
@@ -86,22 +96,24 @@ function PosPage({ isDarkMode }) {
               isDarkMode ? "text-white" : "text-slate-900"
             }`}>
               <Zap className="text-violet-500" size={40} />
-              TechPoint <span className="text-violet-600">POS</span>
+              {/* 👇 NOMBRE DINÁMICO DESDE POSTGRESQL */}
+              {nombreEmpresa} <span className="text-violet-600">POS</span>
             </h1>
             <p className="text-slate-500 font-bold uppercase tracking-[0.2em] text-[10px] mt-3">
-              Sistema Profesional • Snayder Cedeño • Milagro
+              Sistema Profesional • Snayder Cedeño • Milagro • UNEMI
             </p>
           </div>
           
-          {/* Cuadro de Subtotal - Reforzado para visibilidad */}
           <div className={`px-12 py-6 rounded-[2rem] border text-center min-w-[260px] shrink-0 transition-all shadow-inner ${
             isDarkMode ? "bg-slate-950/80 border-violet-500/30" : "bg-slate-50 border-slate-200"
           }`}>
-            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 mb-2 block">Total Operación</span>
+            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 mb-2 block">
+              Monto Base (Sin IVA)
+            </span>
             <p className={`text-5xl font-black tracking-tighter ${
               isDarkMode ? "text-white" : "text-violet-700"
             }`}>
-              ${total.toFixed(2)}
+              ${subtotalTotal.toFixed(2)}
             </p>
           </div>
         </div>
@@ -131,7 +143,8 @@ function PosPage({ isDarkMode }) {
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-            {productosFiltrados.map(prod => (
+            {loading ? <div className="p-20 text-center animate-pulse font-black text-xs uppercase tracking-[0.2em]">Cargando Hardware...</div> :
+             productosFiltrados.map(prod => (
               <div key={prod.id} className={`group relative p-6 rounded-[2.5rem] border transition-all duration-300 ${
                 isDarkMode 
                 ? "bg-slate-900/60 border-white/5 hover:border-violet-500/40 shadow-xl shadow-black/20" 
@@ -183,7 +196,7 @@ function PosPage({ isDarkMode }) {
           </div>
         </div>
 
-        {/* ---- Sidebar de Liquidación ---- */}
+        {/* ---- Sidebar de Carrito ---- */}
         <aside className="relative">
           <div className={`sticky top-8 p-8 rounded-[3rem] border transition-all min-h-[600px] flex flex-col ${
             isDarkMode 
@@ -225,16 +238,17 @@ function PosPage({ isDarkMode }) {
             {carrito.length > 0 && (
               <div className={`mt-10 pt-8 border-t space-y-8 ${isDarkMode ? "border-white/10" : "border-slate-200"}`}>
                 <div className="text-right">
-                  <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Total Final (IVA 15%)</p>
+                  {/* 👇 IVA DINÁMICO DESDE AJUSTES */}
+                  <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Total Liquidación (IVA {ivaPorcentaje}%)</p>
                   <p className={`text-5xl font-black tracking-tighter ${isDarkMode ? "text-white" : "text-slate-950"}`}>
-                    ${(total * 1.15).toFixed(2)}
+                    ${totalConIva}
                   </p>
                 </div>
                 <button 
                   onClick={procesarVentaFinal} 
                   className="w-full bg-gradient-to-br from-violet-600 to-indigo-700 text-white py-6 rounded-[2.2rem] font-black text-lg shadow-2xl shadow-violet-600/40 hover:bg-violet-500 transition-all active:scale-95 uppercase tracking-widest"
                 >
-                  Confirmar Venta
+                  Generar Transacción
                 </button>
               </div>
             )}
@@ -242,7 +256,22 @@ function PosPage({ isDarkMode }) {
         </aside>
       </div>
 
-      {/* Estilos locales para corregir scroll y colisión visual */}
+      {/* MODAL DE ÉXITO */}
+      {showModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/90 backdrop-blur-xl p-6">
+          <div className={`w-full max-w-sm rounded-[3rem] p-10 border text-center animate-in zoom-in duration-300 ${isDarkMode ? "bg-slate-900 border-white/10" : "bg-white border-slate-200 shadow-2xl"}`}>
+            <div className="w-20 h-20 bg-green-500/20 text-green-500 rounded-full flex items-center justify-center mx-auto mb-6">
+              <CheckCircle size={40} />
+            </div>
+            <h3 className="text-2xl font-black mb-2">¡Venta Exitosa!</h3>
+            <p className="text-slate-500 text-sm font-bold uppercase tracking-widest mb-8">Stock actualizado en PostgreSQL</p>
+            <button onClick={() => setShowModal(false)} className="w-full bg-slate-800 text-white py-4 rounded-2xl font-black text-xs uppercase tracking-widest">
+              Continuar
+            </button>
+          </div>
+        </div>
+      )}
+
       <style>{`
         .custom-scrollbar::-webkit-scrollbar { width: 5px; }
         .custom-scrollbar::-webkit-scrollbar-thumb { 

@@ -1,12 +1,10 @@
 from rest_framework import viewsets, status
 from rest_framework.response import Response
 from django.db import transaction
-from .models import Producto, Venta, DetalleVenta
-from .serializers import ProductoSerializer, VentaSerializer
+from .models import Producto, Venta, DetalleVenta, GlobalConfig
+from .serializers import ProductoSerializer, VentaSerializer, GlobalConfigSerializer
 from django.contrib.auth import authenticate
 from rest_framework.views import APIView
-from rest_framework.response import Response
-from rest_framework import status
 
 class LoginView(APIView):
     def post(self, request):
@@ -79,3 +77,16 @@ class VentaViewSet(viewsets.ModelViewSet): # Cambiado a ModelViewSet para soport
             return Response({'error': 'Producto no encontrado'}, status=status.HTTP_404_NOT_FOUND)
         except Exception as e:
             return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+class ConfigView(APIView):
+    def get(self, request):
+        config, _ = GlobalConfig.objects.get_or_create(pk=1)
+        return Response(GlobalConfigSerializer(config).data)
+
+    def post(self, request):
+        config = GlobalConfig.objects.get(pk=1)
+        serializer = GlobalConfigSerializer(config, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=400)

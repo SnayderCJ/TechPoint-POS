@@ -1,6 +1,6 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
-from .views import ProductoViewSet, VentaViewSet, LoginView
+from .views import ProductoViewSet, VentaViewSet, LoginView, ConfigView
 
 router = DefaultRouter()
 # Ruta para gestionar productos (inventario)
@@ -11,4 +11,5 @@ router.register(r'ventas', VentaViewSet, basename='ventas')
 urlpatterns = [
     path('', include(router.urls)),
     path('login/', LoginView.as_view(), name='login_api'),
+    path('config/', ConfigView.as_view(), name='config')
 ]

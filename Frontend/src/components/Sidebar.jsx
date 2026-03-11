@@ -2,23 +2,22 @@ import React, { useState } from 'react';
 import { LayoutDashboard, Package, History, Settings, LogOut, Laptop, Sun, Moon, Menu, X } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 
-const Sidebar = ({ isDarkMode, toggleTheme, user, logout }) => {
+const Sidebar = ({ isDarkMode, toggleTheme, user, logout, config }) => { // 👈 Añadimos config a las props
   const [isOpen, setIsOpen] = useState(false);
   const location = useLocation();
 
   const toggleMenu = () => setIsOpen(!isOpen);
   
-  // Definición de rutas con acceso por roles
   const menuItems = [
-    { name: 'Panel de Ventas', path: '/', icon: <LayoutDashboard size={20} />, roles: ['admin', 'cashier'] },
+    { name: 'Ventas (POS)', path: '/', icon: <LayoutDashboard size={20} />, roles: ['admin', 'cashier'] },
     { name: 'Inventario', path: '/inventario', icon: <Package size={20} />, roles: ['admin'] },
     { name: 'Historial', path: '/historial', icon: <History size={20} />, roles: ['admin'] },
-    { name: 'Configuración', path: '/ajustes', icon: <Settings size={20} />, roles: ['admin'] }, 
+    { name: 'Configuración', path: '/ajustes', icon: <Settings size={20} />, roles: ['admin'] },
   ];
 
   return (
     <>
-      {/* --- BOTÓN HAMBURGUESA (Móvil) --- */}
+      {/* --- BOTÓN HAMBURGUESA --- */}
       <button 
         onClick={toggleMenu}
         className={`fixed top-6 left-6 p-3 rounded-xl z-[70] md:hidden shadow-lg transition-all active:scale-95 ${
@@ -30,7 +29,7 @@ const Sidebar = ({ isDarkMode, toggleTheme, user, logout }) => {
         {isOpen ? <X size={24} /> : <Menu size={24} />}
       </button>
 
-      {/* --- OVERLAY (Móvil) --- */}
+      {/* --- OVERLAY --- */}
       {isOpen && (
         <div 
           onClick={toggleMenu} 
@@ -47,7 +46,7 @@ const Sidebar = ({ isDarkMode, toggleTheme, user, logout }) => {
           : "bg-white border-slate-200 text-slate-600 shadow-slate-200/50"
       }`}>
         
-        {/* Brand / Logo */}
+        {/* Brand / Logo DINÁMICO */}
         <div className="p-8">
           <div className="flex items-center gap-3">
             <div className={`p-2.5 rounded-2xl text-white shadow-sm transition-all ${
@@ -55,9 +54,10 @@ const Sidebar = ({ isDarkMode, toggleTheme, user, logout }) => {
             }`}>
               <Laptop size={26} />
             </div>
-            <div className="flex flex-col">
-              <span className={`text-xl font-black tracking-tighter leading-none ${isDarkMode ? "text-white" : "text-slate-900"}`}>
-                TechPoint
+            <div className="flex flex-col overflow-hidden">
+              {/* 👇 ¡NOMBRE DINÁMICO DESDE POSTGRESQL! */}
+              <span className={`text-xl font-black tracking-tighter leading-none truncate ${isDarkMode ? "text-white" : "text-slate-900"}`}>
+                {config?.nombre_negocio || "TechPoint"} 
               </span>
               <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-1">
                 {user?.role === 'admin' ? 'Admin Mode' : 'Cashier Terminal'}
@@ -66,10 +66,10 @@ const Sidebar = ({ isDarkMode, toggleTheme, user, logout }) => {
           </div>
         </div>
 
-        {/* Navigation - FILTRADA POR ROL */}
+        {/* Navigation */}
         <nav className="flex-1 px-4 space-y-1.5 mt-2">
           {menuItems
-            .filter(item => item.roles.includes(user?.role)) // 👈 Filtra según el rol del usuario
+            .filter(item => item.roles.includes(user?.role))
             .map((item) => {
               const isActive = location.pathname === item.path;
               return (
@@ -129,12 +129,12 @@ const Sidebar = ({ isDarkMode, toggleTheme, user, logout }) => {
                  {user?.name || 'Snayder Cedeño'}
                </p>
                <p className="text-[10px] font-bold text-slate-500 truncate uppercase tracking-tighter">
-                 {user?.institution || 'UNEMI • Milagro'}
+                 Universidad Estatal De Milagro (UNEMI)
                </p>
              </div>
           </div>
           <button 
-            onClick={logout} // 👈 Conectado a la función logout de App.jsx
+            onClick={logout}
             className="flex items-center gap-3 px-5 py-3.5 w-full rounded-2xl text-slate-500 hover:bg-red-500/10 hover:text-red-500 transition-all font-bold text-[11px] uppercase tracking-widest"
           >
             <LogOut size={16} />
