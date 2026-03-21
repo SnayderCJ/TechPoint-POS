@@ -192,7 +192,7 @@ const AjustesPage = ({ isDarkMode }) => {
               </div>
               <div className="text-right">
                 <p className="text-[9px] font-bold text-green-500 uppercase">Latencia</p>
-                <p className="text-xs font-black">12ms</p>
+                <p className="text-xs font-black">8ms</p>
               </div>
             </div>
 
