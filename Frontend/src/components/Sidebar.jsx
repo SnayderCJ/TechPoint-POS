@@ -1,8 +1,11 @@
 import React, { useState } from 'react';
-import { LayoutDashboard, Package, History, Settings, LogOut, Laptop, Sun, Moon, Menu, X } from 'lucide-react';
+import { 
+  LayoutDashboard, Package, History, Settings, 
+  LogOut, Laptop, Sun, Moon, Menu, X, Users 
+} from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 
-const Sidebar = ({ isDarkMode, toggleTheme, user, logout, config }) => { // 👈 Añadimos config a las props
+const Sidebar = ({ isDarkMode, toggleTheme, user, logout, config }) => {
   const [isOpen, setIsOpen] = useState(false);
   const location = useLocation();
 
@@ -11,19 +14,18 @@ const Sidebar = ({ isDarkMode, toggleTheme, user, logout, config }) => { // 👈
   const menuItems = [
     { name: 'Ventas (POS)', path: '/', icon: <LayoutDashboard size={20} />, roles: ['admin', 'cashier'] },
     { name: 'Inventario', path: '/inventario', icon: <Package size={20} />, roles: ['admin'] },
+    { name: 'Clientes (CRM)', path: '/clientes', icon: <Users size={20} />, roles: ['admin', 'cashier'] },
     { name: 'Historial', path: '/historial', icon: <History size={20} />, roles: ['admin'] },
     { name: 'Configuración', path: '/ajustes', icon: <Settings size={20} />, roles: ['admin'] },
   ];
 
   return (
     <>
-      {/* --- BOTÓN HAMBURGUESA --- */}
+      {/* --- BOTÓN HAMBURGUESA (Móvil) --- */}
       <button 
         onClick={toggleMenu}
         className={`fixed top-6 left-6 p-3 rounded-xl z-[70] md:hidden shadow-lg transition-all active:scale-95 ${
-          isDarkMode 
-            ? "bg-slate-900 text-white border border-white/10" 
-            : "bg-white text-slate-900 border border-slate-200"
+          isDarkMode ? "bg-slate-900 text-white border border-white/10" : "bg-white text-slate-900 border border-slate-200"
         }`}
       >
         {isOpen ? <X size={24} /> : <Menu size={24} />}
@@ -41,12 +43,10 @@ const Sidebar = ({ isDarkMode, toggleTheme, user, logout, config }) => { // 👈
       <aside className={`fixed md:sticky top-4 left-4 z-[65] transition-all duration-300 h-[calc(100vh-2rem)] rounded-[2.5rem] border shadow-2xl flex flex-col overflow-hidden ${
         isOpen ? "translate-x-0 w-64" : "-translate-x-[120%] md:translate-x-0 w-64"
       } ${
-        isDarkMode 
-          ? "bg-slate-900 border-slate-800 text-slate-300" 
-          : "bg-white border-slate-200 text-slate-600 shadow-slate-200/50"
+        isDarkMode ? "bg-slate-900 border-slate-800 text-slate-300" : "bg-white border-slate-200 text-slate-600 shadow-slate-200/50"
       }`}>
         
-        {/* Brand / Logo DINÁMICO */}
+        {/* Brand / Logo Dinámico */}
         <div className="p-8">
           <div className="flex items-center gap-3">
             <div className={`p-2.5 rounded-2xl text-white shadow-sm transition-all ${
@@ -55,9 +55,8 @@ const Sidebar = ({ isDarkMode, toggleTheme, user, logout, config }) => { // 👈
               <Laptop size={26} />
             </div>
             <div className="flex flex-col overflow-hidden">
-              {/* 👇 ¡NOMBRE DINÁMICO DESDE POSTGRESQL! */}
               <span className={`text-xl font-black tracking-tighter leading-none truncate ${isDarkMode ? "text-white" : "text-slate-900"}`}>
-                {config?.nombre_negocio || "TechPoint"} 
+                {config?.nombre_negocio || "Viamatica"} 
               </span>
               <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-1">
                 {user?.role === 'admin' ? 'Admin Mode' : 'Cashier Terminal'}
@@ -66,8 +65,8 @@ const Sidebar = ({ isDarkMode, toggleTheme, user, logout, config }) => { // 👈
           </div>
         </div>
 
-        {/* Navigation */}
-        <nav className="flex-1 px-4 space-y-1.5 mt-2">
+        {/* Navigation Filtrada */}
+        <nav className="flex-1 px-4 space-y-1.5 mt-2 overflow-y-auto custom-scrollbar">
           {menuItems
             .filter(item => item.roles.includes(user?.role))
             .map((item) => {
@@ -116,7 +115,7 @@ const Sidebar = ({ isDarkMode, toggleTheme, user, logout, config }) => { // 👈
           </div>
         </div>
 
-        {/* Profile / Footer */}
+        {/* Profile / Footer Profesional */}
         <div className={`p-4 border-t ${isDarkMode ? "border-slate-800 bg-slate-950/50" : "border-slate-100 bg-slate-50/50"}`}>
           <div className="flex items-center gap-3 mb-4 px-2">
              <div className={`w-10 h-10 rounded-2xl border flex items-center justify-center text-xs font-black transition-colors shadow-inner ${
@@ -129,7 +128,7 @@ const Sidebar = ({ isDarkMode, toggleTheme, user, logout, config }) => { // 👈
                  {user?.name || 'Snayder Cedeño'}
                </p>
                <p className="text-[10px] font-bold text-slate-500 truncate uppercase tracking-tighter">
-                 Universidad Estatal De Milagro (UNEMI)
+                 UNEMI • Milagro
                </p>
              </div>
           </div>
@@ -142,6 +141,14 @@ const Sidebar = ({ isDarkMode, toggleTheme, user, logout, config }) => { // 👈
           </button>
         </div>
       </aside>
+
+      <style>{`
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { 
+          background-color: ${isDarkMode ? "#334155" : "#e2e8f0"}; 
+          border-radius: 10px; 
+        }
+      `}</style>
     </>
   );
 };
