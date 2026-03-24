@@ -1,9 +1,9 @@
 from django.contrib import admin
-from .models import Producto, Cliente, Venta, DetalleVenta, GlobalConfig, Abono
+from .models import Producto, Cliente, Venta, DetalleVenta, GlobalConfig, Abono, AuditLog
 
 @admin.register(Producto)
 class ProductoAdmin(admin.ModelAdmin):
-    list_display = ('nombre', 'categoria', 'precio', 'stock', 'codigo_barras')
+    list_display = ('nombre', 'categoria', 'precio', 'precio_compra', 'stock', 'stock_minimo')
     search_fields = ('nombre', 'codigo_barras')
     list_filter = ('categoria',)
 
@@ -12,12 +12,12 @@ class ClienteAdmin(admin.ModelAdmin):
     list_display = ('nombre', 'identificacion', 'correo', 'telefono', 'cupo_credito')
     search_fields = ('nombre', 'identificacion')
 
-class DetalleVentaInline(admin.TabularInline): # Para ver los productos vendidos DENTRO de la venta
+class DetalleVentaInline(admin.TabularInline):
     model = DetalleVenta
     extra = 0
-    readonly_fields = ('producto', 'cantidad', 'precio_unitario')
+    readonly_fields = ('producto', 'cantidad', 'precio_unitario', 'costo_unitario')
 
-class AbonoInline(admin.TabularInline): # Para ver los abonos DENTRO de la venta
+class AbonoInline(admin.TabularInline):
     model = Abono
     extra = 0
     readonly_fields = ('fecha',)
@@ -32,6 +32,12 @@ class VentaAdmin(admin.ModelAdmin):
 class AbonoAdmin(admin.ModelAdmin):
     list_display = ('venta', 'monto', 'metodo_pago', 'fecha')
     list_filter = ('metodo_pago', 'fecha')
+
+@admin.register(AuditLog)
+class AuditLogAdmin(admin.ModelAdmin):
+    list_display = ('usuario', 'accion', 'descripcion', 'fecha')
+    list_filter = ('accion', 'fecha')
+    readonly_fields = ('usuario', 'accion', 'descripcion', 'fecha')
 
 @admin.register(GlobalConfig)
 class GlobalConfigAdmin(admin.ModelAdmin):

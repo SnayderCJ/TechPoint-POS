@@ -148,12 +148,13 @@ class VentaViewSet(viewsets.ModelViewSet): # Cambiado a ModelViewSet para soport
                     producto.stock -= cantidad_vendida
                     producto.save()
 
-                    # 4. Crear Detalle
+                    # 4. Crear Detalle con Costo Histórico
                     DetalleVenta.objects.create(
                         venta=nueva_venta,
                         producto=producto,
                         cantidad=cantidad_vendida,
-                        precio_unitario=producto.precio
+                        precio_unitario=producto.precio,
+                        costo_unitario=producto.precio_compra # 👈 Capturamos el costo actual
                     )
 
             # Devolvemos la venta serializada para que el frontend pueda mostrarla de inmediato

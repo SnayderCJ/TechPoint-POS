@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { 
   LayoutDashboard, Package, History, Settings, 
-  LogOut, Laptop, Sun, Moon, Menu, X, Users 
+  LogOut, Laptop, Sun, Moon, Menu, X, Users, BarChart3
 } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 
@@ -13,6 +13,7 @@ const Sidebar = ({ isDarkMode, toggleTheme, user, logout, config }) => {
   
   const menuItems = [
     { name: 'Ventas (POS)', path: '/', icon: <LayoutDashboard size={20} />, roles: ['admin', 'cashier'] },
+    { name: 'Inteligencia BI', path: '/bi', icon: <BarChart3 size={20} />, roles: ['admin'] },
     { name: 'Inventario', path: '/inventario', icon: <Package size={20} />, roles: ['admin'] },
     { name: 'Clientes (CRM)', path: '/clientes', icon: <Users size={20} />, roles: ['admin', 'cashier'] },
     { name: 'Historial', path: '/historial', icon: <History size={20} />, roles: ['admin'] },

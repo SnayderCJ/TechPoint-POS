@@ -9,10 +9,11 @@ import HistorialPage from "./pages/HistorialPage";
 import AjustesPage from "./pages/AjustesPage";
 import LoginPage from "./pages/LoginPage";
 import ClientesPage from "./pages/ClientesPage";
-import { useToast, ToastContainer } from "./components/Notifications"; // 👈 Nuevo
+import BiPage from "./pages/BiPage";
+import { useToast, ToastContainer } from "./components/Notifications"; 
 
 function App() {
-  const { toasts, showToast } = useToast(); // 👈 Nuevo
+  const { toasts, showToast } = useToast();
   const [isDarkMode, setIsDarkMode] = useState(() => {
     const savedTheme = localStorage.getItem('techpoint_theme');
     return savedTheme ? savedTheme === 'dark' : true;
@@ -64,7 +65,7 @@ function App() {
 
   return (
     <Router>
-      <ToastContainer toasts={toasts} /> {/* 👈 Contenedor Global */}
+      <ToastContainer toasts={toasts} />
       {!user ? (
         <LoginPage setUser={setUser} isDarkMode={isDarkMode} showToast={showToast} />
       ) : (
@@ -89,6 +90,7 @@ function App() {
 
                 {user.role === 'admin' ? (
                   <>
+                    <Route path="/bi" element={<BiPage isDarkMode={isDarkMode} showToast={showToast} />} />
                     <Route path="/inventario" element={<InventarioPage isDarkMode={isDarkMode} showToast={showToast} />} />
                     <Route path="/historial" element={<HistorialPage isDarkMode={isDarkMode} config={config} showToast={showToast} />} />
                     <Route path="/ajustes" element={<AjustesPage isDarkMode={isDarkMode} showToast={showToast} />} />
