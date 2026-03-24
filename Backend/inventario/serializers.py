@@ -1,5 +1,6 @@
 from rest_framework import serializers
 from .models import Producto, Venta, DetalleVenta, GlobalConfig, Cliente, Abono
+from django.db.models import Sum
 
 class AbonoSerializer(serializers.ModelSerializer):
     class Meta:
@@ -7,9 +8,17 @@ class AbonoSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 class ClienteSerializer(serializers.ModelSerializer):
+    cupo_disponible = serializers.SerializerMethodField()
+
     class Meta:
         model = Cliente
         fields = '__all__'
+
+    def get_cupo_disponible(self, obj):
+        # Calculamos la deuda sumando todos los saldos pendientes de sus ventas
+        # Usamos .aggregate para que la base de datos lo haga de forma eficiente
+        deuda = Venta.objects.filter(cliente=obj).aggregate(Sum('saldo_pendiente'))['saldo_pendiente__sum'] or 0
+        return obj.cupo_credito - deuda
 
     def validate_identificacion(self, value):
         if not value.isdigit():

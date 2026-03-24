@@ -281,15 +281,22 @@ function PosPage({ isDarkMode, config, showToast }) { // 👈 Recibe showToast
                 </div>
               </div>
 
+              {/* INDICADOR DE CRÉDITO DINÁMICO */}
               {clienteSeleccionado && metodoPago === 'CREDITO' && (
                 <div className={`p-4 rounded-2xl border animate-in slide-in-from-bottom-2 ${
                   isDarkMode ? "bg-violet-500/10 border-violet-500/20" : "bg-violet-50 border-violet-100"
                 }`}>
                   <div className="flex justify-between items-center mb-1">
-                    <span className="text-[9px] font-black uppercase text-violet-500">Cupo Máximo:</span>
+                    <span className="text-[9px] font-black uppercase text-violet-500 tracking-widest">Cupo Disponible:</span>
                     <span className={`text-xs font-black ${isDarkMode ? "text-white" : "text-slate-900"}`}>
-                      ${parseFloat(clienteSeleccionado.cupo_credito).toFixed(2)}
+                      ${parseFloat(clienteSeleccionado.cupo_disponible).toFixed(2)}
                     </span>
+                  </div>
+                  <div className="w-full h-1.5 bg-slate-200 dark:bg-slate-900 rounded-full mt-2 overflow-hidden">
+                    <div 
+                      className="h-full bg-violet-500 transition-all duration-1000" 
+                      style={{ width: `${Math.min(100, (clienteSeleccionado.cupo_disponible / clienteSeleccionado.cupo_credito) * 100)}%` }}
+                    ></div>
                   </div>
                 </div>
               )}
