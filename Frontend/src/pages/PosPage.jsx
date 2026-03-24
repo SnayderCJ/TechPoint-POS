@@ -1,14 +1,15 @@
 import { useState, useEffect } from 'react';
-import { ShoppingCart, Search, Package, CheckCircle, Zap, Trash2, Sparkles, Cpu, Loader2 } from 'lucide-react';
+import { ShoppingCart, Search, Package, CheckCircle, Zap, Trash2, Sparkles, Cpu, Loader2, User } from 'lucide-react';
 
-function PosPage({ isDarkMode, config }) { // 
+function PosPage({ isDarkMode, config }) { 
   const [busqueda, setBusqueda] = useState(""); 
   const [productos, setProductos] = useState([]);
+  const [clientes, setClientes] = useState([]);
+  const [clienteSeleccionado, setClienteSeleccionado] = useState(null);
   const [loading, setLoading] = useState(true); 
   const [carrito, setCarrito] = useState([]);
   const [showModal, setShowModal] = useState(false);
 
-  // Variables dinámicas desde la base de datos de Milagro
   const nombreEmpresa = config?.nombre_negocio || "TechPoint";
   const ivaPorcentaje = parseFloat(config?.iva_porcentaje || 15);
 
@@ -18,10 +19,24 @@ function PosPage({ isDarkMode, config }) { //
       const data = await response.json();
       setProductos(data);
     } catch (err) { console.error(err); } 
-    finally { setLoading(false); }
   };
 
-  useEffect(() => { fetchProductos(); }, []);
+  const fetchClientes = async () => {
+    try {
+      const response = await fetch('http://localhost:8000/api/clientes/');
+      const data = await response.json();
+      setClientes(data);
+    } catch (err) { console.error(err); }
+  };
+
+  useEffect(() => { 
+    const init = async () => {
+      setLoading(true);
+      await Promise.all([fetchProductos(), fetchClientes()]);
+      setLoading(false);
+    };
+    init();
+  }, []);
 
   const agregarAlCarrito = (producto) => {
     const enCarrito = carrito.filter(p => p.id === producto.id).length;
@@ -41,10 +56,7 @@ function PosPage({ isDarkMode, config }) { //
     }
   };
 
-  // Subtotal (Suma de precios base)
   const subtotalTotal = carrito.reduce((acc, p) => acc + parseFloat(p.precio), 0);
-  
-  // 🚀 Cálculo Dinámico de Impuestos basado en la Configuración Global
   const totalConIva = (subtotalTotal * (1 + (ivaPorcentaje / 100))).toFixed(2);
 
   const procesarVentaFinal = async () => {
@@ -59,14 +71,16 @@ function PosPage({ isDarkMode, config }) { //
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
-          total: totalConIva, // 👈 Enviamos el total recalculado dinámicamente
-          items 
+          total: totalConIva, 
+          items,
+          cliente: clienteSeleccionado?.id || null 
         })
       });
 
       if (response.ok) {
         await fetchProductos();
         setCarrito([]);
+        setClienteSeleccionado(null);
         setShowModal(true);
       } else {
         alert("❌ Error en la transacción.");
@@ -82,7 +96,6 @@ function PosPage({ isDarkMode, config }) { //
   return (
     <div className="flex flex-col space-y-8 animate-in fade-in slide-in-from-top-4 duration-700 pb-20">
       
-      {/* ---- Header Dinámico ---- */}
       <header className={`relative transition-all duration-500 border p-8 md:p-12 rounded-[2.5rem] md:rounded-[3.5rem] shadow-2xl overflow-hidden shrink-0 ${
         isDarkMode 
           ? "bg-slate-900/80 backdrop-blur-xl border-white/10 shadow-black/40" 
@@ -96,7 +109,6 @@ function PosPage({ isDarkMode, config }) { //
               isDarkMode ? "text-white" : "text-slate-900"
             }`}>
               <Zap className="text-violet-500" size={40} />
-              {/* 👇 NOMBRE DINÁMICO DESDE POSTGRESQL */}
               {nombreEmpresa} <span className="text-violet-600">POS</span>
             </h1>
             <p className="text-slate-500 font-bold uppercase tracking-[0.2em] text-[10px] mt-3">
@@ -120,7 +132,6 @@ function PosPage({ isDarkMode, config }) { //
       </header>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* ---- Matriz de Productos ---- */}
         <div className="lg:col-span-2 space-y-6">
           <div className={`flex flex-col md:flex-row items-center justify-between gap-6 p-6 rounded-3xl border transition-all ${
             isDarkMode ? "bg-slate-900/40 border-white/5" : "bg-white border-slate-200 shadow-sm"
@@ -196,16 +207,52 @@ function PosPage({ isDarkMode, config }) { //
           </div>
         </div>
 
-        {/* ---- Sidebar de Carrito ---- */}
         <aside className="relative">
           <div className={`sticky top-8 p-8 rounded-[3rem] border transition-all min-h-[600px] flex flex-col ${
             isDarkMode 
             ? "bg-slate-900/80 backdrop-blur-xl border-white/10 shadow-2xl" 
             : "bg-white border-slate-200 shadow-xl shadow-slate-300/50"
           }`}>
-            <h2 className={`text-2xl font-black mb-10 flex items-center gap-3 ${isDarkMode ? "text-white" : "text-slate-800"}`}>
+            <h2 className={`text-2xl font-black mb-8 flex items-center gap-3 ${isDarkMode ? "text-white" : "text-slate-800"}`}>
               <Sparkles className="text-violet-500" size={24} /> Carrito
             </h2>
+
+            <div className={`mb-8 p-5 rounded-3xl border transition-all ${
+              isDarkMode ? "bg-slate-950/50 border-white/5" : "bg-slate-50 border-slate-100 shadow-inner"
+            }`}>
+              <label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 mb-3 block">
+                Asignar Cliente (Opcional)
+              </label>
+              <div className="relative">
+                <User className="absolute left-4 top-3.5 text-slate-400" size={16} />
+                <select 
+                  className={`w-full pl-12 pr-5 py-3 rounded-2xl border outline-none font-bold text-xs transition-all appearance-none ${
+                    isDarkMode 
+                    ? "bg-slate-900 border-white/10 text-white focus:border-violet-500" 
+                    : "bg-white border-slate-200 text-slate-900 focus:border-violet-500 shadow-sm"
+                  }`}
+                  value={clienteSeleccionado?.id || ""}
+                  onChange={(e) => {
+                    const id = e.target.value;
+                    const c = clientes.find(cli => cli.id === parseInt(id));
+                    setClienteSeleccionado(c || null);
+                  }}
+                >
+                  <option value="">Consumidor Final</option>
+                  {clientes.map(cli => (
+                    <option key={cli.id} value={cli.id}>{cli.nombre} - {cli.identificacion}</option>
+                  ))}
+                </select>
+              </div>
+              {clienteSeleccionado && (
+                <div className="mt-4 flex items-center gap-2 animate-in zoom-in duration-300">
+                  <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
+                  <span className={`text-[10px] font-black uppercase tracking-widest ${isDarkMode ? "text-violet-400" : "text-violet-600"}`}>
+                    Cliente Identificado
+                  </span>
+                </div>
+              )}
+            </div>
             
             <div className="flex-1 space-y-4 overflow-y-auto pr-2 custom-scrollbar">
               {carrito.length === 0 ? (
@@ -238,7 +285,6 @@ function PosPage({ isDarkMode, config }) { //
             {carrito.length > 0 && (
               <div className={`mt-10 pt-8 border-t space-y-8 ${isDarkMode ? "border-white/10" : "border-slate-200"}`}>
                 <div className="text-right">
-                  {/* 👇 IVA DINÁMICO DESDE AJUSTES */}
                   <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Total Liquidación (IVA {ivaPorcentaje}%)</p>
                   <p className={`text-5xl font-black tracking-tighter ${isDarkMode ? "text-white" : "text-slate-950"}`}>
                     ${totalConIva}
@@ -256,7 +302,6 @@ function PosPage({ isDarkMode, config }) { //
         </aside>
       </div>
 
-      {/* MODAL DE ÉXITO */}
       {showModal && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/90 backdrop-blur-xl p-6">
           <div className={`w-full max-w-sm rounded-[3rem] p-10 border text-center animate-in zoom-in duration-300 ${isDarkMode ? "bg-slate-900 border-white/10" : "bg-white border-slate-200 shadow-2xl"}`}>

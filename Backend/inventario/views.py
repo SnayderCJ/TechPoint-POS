@@ -44,14 +44,20 @@ class VentaViewSet(viewsets.ModelViewSet): # Cambiado a ModelViewSet para soport
         """
         items = request.data.get('items', [])
         total_venta = request.data.get('total')
+        cliente_id = request.data.get('cliente')
 
         if not items:
             return Response({'error': 'No hay productos en la venta'}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
             with transaction.atomic():
-                # 1. Crear el registro principal
-                nueva_venta = Venta.objects.create(total=total_venta)
+                # 1. Buscar cliente si existe
+                cliente = None
+                if cliente_id:
+                    cliente = Cliente.objects.get(id=cliente_id)
+
+                # 2. Crear el registro principal
+                nueva_venta = Venta.objects.create(total=total_venta, cliente=cliente)
 
                 for item in items:
                     # select_for_update previene errores si dos cajeros venden lo mismo al mismo tiempo
