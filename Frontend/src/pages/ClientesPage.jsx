@@ -1,18 +1,19 @@
 import { useState, useEffect } from 'react';
 import { UserPlus, Users, Search, Trash2, Edit3, CheckCircle, AlertCircle, CreditCard, X, Receipt, ArrowRight, DollarSign, Printer, Download } from 'lucide-react';
 
-function ClientesPage({ isDarkMode }) {
+function ClientesPage({ isDarkMode, showToast }) {
   const [clientes, setClientes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [busqueda, setBusqueda] = useState("");
   const [editandoId, setEditandoId] = useState(null);
   
-  // Estados para Cuentas por Cobrar
   const [clienteSeleccionadoCuentas, setClienteSeleccionadoCuentas] = useState(null);
   const [ventasPendientes, setVentasPendientes] = useState([]);
   const [movimientos, setMovimientos] = useState([]);
   const [infoFinanciera, setInfoFinanciera] = useState(null);
   const [montoAbono, setMontoAbono] = useState("");
+
+  const [confirmDelete, setConfirmDelete] = useState(null); // Para el modal de borrado
 
   const [formData, setFormData] = useState({
     identificacion: '',
@@ -37,13 +38,11 @@ function ClientesPage({ isDarkMode }) {
 
   const fetchEstadoCuenta = async (cliente) => {
     try {
-      // 1. Obtener ventas pendientes para abonar
       const resVentas = await fetch('http://localhost:8000/api/ventas/');
       const dataVentas = await resVentas.json();
       const pendientes = dataVentas.filter(v => v.cliente === cliente.id && parseFloat(v.saldo_pendiente) > 0);
       setVentasPendientes(pendientes);
 
-      // 2. Obtener historial cronológico de movimientos
       const resMovimientos = await fetch(`http://localhost:8000/api/clientes/${cliente.id}/estado_cuenta/`);
       const dataMovimientos = await resMovimientos.json();
       setMovimientos(dataMovimientos.movimientos);
@@ -82,7 +81,6 @@ function ClientesPage({ isDarkMode }) {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
-    setSuccess(false);
     const url = editandoId ? `http://localhost:8000/api/clientes/${editandoId}/` : 'http://localhost:8000/api/clientes/';
     const method = editandoId ? 'PUT' : 'POST';
 
@@ -93,19 +91,18 @@ function ClientesPage({ isDarkMode }) {
         body: JSON.stringify(formData)
       });
       if (response.ok) {
-        setSuccess(true);
+        showToast(editandoId ? "Cliente actualizado" : "Cliente registrado");
         cancelarEdicion();
         fetchClientes();
-        setTimeout(() => setSuccess(false), 3000);
       } else {
         const data = await response.json();
-        setError(data.identificacion ? `Error: ${data.identificacion[0]}` : "Error al procesar cliente");
+        showToast(data.identificacion ? `Error: ${data.identificacion[0]}` : "Error al procesar", "error");
       }
-    } catch (err) { setError("Error de conexión."); }
+    } catch (err) { showToast("Error de conexión", "error"); }
   };
 
   const registrarAbono = async (ventaId) => {
-    if (!montoAbono || parseFloat(montoAbono) <= 0) return alert("Ingrese un monto válido");
+    if (!montoAbono || parseFloat(montoAbono) <= 0) return showToast("Ingrese un monto válido", "error");
     try {
       const response = await fetch('http://localhost:8000/api/abonos/', {
         method: 'POST',
@@ -114,24 +111,24 @@ function ClientesPage({ isDarkMode }) {
       });
       if (response.ok) {
         setMontoAbono("");
-        alert("✅ Abono registrado.");
+        showToast("✅ Abono registrado correctamente");
         fetchEstadoCuenta(clienteSeleccionadoCuentas);
         fetchClientes();
       }
-    } catch (err) { alert("Error al registrar abono"); }
-  };
-
-  const imprimirEstadoCuenta = () => {
-    window.print();
+    } catch (err) { showToast("Error al registrar abono", "error"); }
   };
 
   const eliminarCliente = async (id) => {
-    if (!window.confirm("¿Estás seguro?")) return;
     try {
       const response = await fetch(`http://localhost:8000/api/clientes/${id}/`, { method: 'DELETE' });
-      if (response.ok) fetchClientes();
-      else alert("No se pudo eliminar.");
-    } catch (err) { console.error(err); }
+      if (response.ok) {
+        showToast("Cliente eliminado");
+        fetchClientes();
+      } else {
+        showToast("No se pudo eliminar el cliente", "error");
+      }
+    } catch (err) { showToast("Error de conexión", "error"); }
+    setConfirmDelete(null);
   };
 
   const clientesFiltrados = clientes.filter(c => 
@@ -156,7 +153,7 @@ function ClientesPage({ isDarkMode }) {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
         
-        {/* FORMULARIO (OCULTO EN IMPRESIÓN) */}
+        {/* FORMULARIO */}
         <div className={`lg:col-span-1 p-8 rounded-[2.5rem] border h-fit sticky top-8 print:hidden ${
           isDarkMode ? "bg-slate-900/50 border-white/10 shadow-2xl" : "bg-white border-slate-200 shadow-xl"
         }`}>
@@ -186,26 +183,20 @@ function ClientesPage({ isDarkMode }) {
                 <input name="telefono" value={formData.telefono} onChange={handleInputChange} className={`w-full px-5 py-4 rounded-2xl border outline-none font-bold text-sm ${isDarkMode ? "bg-slate-950 border-white/10 text-white" : "bg-slate-50 border-slate-200"}`}/>
               </div>
             </div>
-            {error && <div className="p-4 bg-red-500/10 border border-red-500/20 text-red-500 rounded-2xl text-[10px] font-black uppercase tracking-widest">⚠️ {error}</div>}
-            {success && <div className="p-4 bg-green-500/10 border border-green-500/20 text-green-500 rounded-2xl text-[10px] font-black uppercase tracking-widest">✅ Operación Exitosa</div>}
-            <button type="submit" className={`w-full py-5 rounded-[1.8rem] font-black text-sm uppercase tracking-widest transition-all shadow-lg ${editandoId ? "bg-amber-500 text-white" : "bg-violet-600 text-white"}`}>{editandoId ? "Guardar Cambios" : "Registrar Cliente"}</button>
+            <button type="submit" className={`w-full py-5 rounded-[1.8rem] font-black text-sm uppercase tracking-widest transition-all shadow-lg ${editandoId ? "bg-amber-500 text-white shadow-amber-500/30" : "bg-violet-600 text-white shadow-violet-600/30"}`}>{editandoId ? "Guardar Cambios" : "Registrar Cliente"}</button>
           </form>
         </div>
 
-        {/* LISTADO Y CUENTAS POR COBRAR */}
+        {/* LISTADO Y ESTADO DE CUENTA */}
         <div className="lg:col-span-2 space-y-8">
           
-          {/* BUSCADOR (OCULTO EN IMPRESIÓN) */}
           <div className={`p-6 rounded-3xl border flex items-center gap-4 transition-all print:hidden ${isDarkMode ? "bg-slate-900/40 border-white/5" : "bg-white border-slate-200 shadow-sm"}`}>
             <Search className="text-slate-400" size={20} />
             <input type="text" placeholder="Buscar cliente..." className={`w-full bg-transparent outline-none font-bold text-sm ${isDarkMode ? "text-white" : "text-slate-900"}`} value={busqueda} onChange={(e) => setBusqueda(e.target.value)}/>
           </div>
 
-          {/* ESTADO DE CUENTA (MODO REPORTE) */}
           {clienteSeleccionadoCuentas && (
             <div className={`p-10 rounded-[2.5rem] border space-y-8 animate-in zoom-in duration-300 ${isDarkMode ? "bg-slate-900 border-white/10 shadow-2xl" : "bg-white border-slate-200 shadow-xl"}`}>
-              
-              {/* CABECERA REPORTE */}
               <div className="flex flex-col md:flex-row justify-between items-start gap-8 border-b pb-8 border-slate-200">
                 <div className="space-y-2">
                   <h3 className="text-3xl font-black text-slate-900 dark:text-white flex items-center gap-4">
@@ -214,12 +205,11 @@ function ClientesPage({ isDarkMode }) {
                   <p className="text-slate-500 font-bold uppercase tracking-widest text-xs">Milagro, Ecuador • TechPoint POS</p>
                 </div>
                 <div className="flex gap-4 print:hidden">
-                  <button onClick={imprimirEstadoCuenta} className="flex items-center gap-2 bg-slate-900 text-white px-6 py-3 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-slate-800 shadow-lg"><Printer size={16}/> Imprimir</button>
+                  <button onClick={() => window.print()} className="flex items-center gap-2 bg-slate-900 text-white px-6 py-3 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-slate-800 shadow-lg"><Printer size={16}/> Imprimir</button>
                   <button onClick={() => setClienteSeleccionadoCuentas(null)} className="text-slate-400 hover:text-red-500"><X /></button>
                 </div>
               </div>
 
-              {/* INFORMACIÓN FINANCIERA */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div className={`p-6 rounded-3xl border ${isDarkMode ? "bg-slate-950/50 border-white/5" : "bg-slate-50 border-slate-100"}`}>
                   <p className="text-[10px] font-black uppercase text-slate-500 mb-2">Cliente</p>
@@ -236,7 +226,6 @@ function ClientesPage({ isDarkMode }) {
                 </div>
               </div>
 
-              {/* FACTURAS PENDIENTES (PARA ABONAR) */}
               <div className="print:hidden space-y-4">
                 <h4 className="text-xs font-black uppercase tracking-[0.2em] text-slate-500 flex items-center gap-2">
                   <DollarSign size={14} className="text-green-500"/> Registrar Abono
@@ -262,7 +251,6 @@ function ClientesPage({ isDarkMode }) {
                 )}
               </div>
 
-              {/* MOVIMIENTOS CRONOLÓGICOS */}
               <div className="space-y-6">
                 <h4 className="text-xs font-black uppercase tracking-[0.2em] text-slate-500">Historial de Movimientos</h4>
                 <div className="space-y-3">
@@ -283,11 +271,9 @@ function ClientesPage({ isDarkMode }) {
                   ))}
                 </div>
               </div>
-
             </div>
           )}
 
-          {/* TABLA DE CLIENTES (OCULTA SI HAY REPORTE ABIERTO EN IMPRESIÓN) */}
           <div className={`grid grid-cols-1 gap-4 print:hidden ${clienteSeleccionadoCuentas ? "opacity-30 pointer-events-none" : ""}`}>
             {clientesFiltrados.map(cliente => (
               <div key={cliente.id} className={`p-6 rounded-[2rem] border transition-all duration-300 flex flex-col md:flex-row justify-between items-center gap-6 ${isDarkMode ? "bg-slate-900/60 border-white/5 hover:border-violet-500/40" : "bg-white border-slate-100 hover:border-violet-400 shadow-sm"}`}>
@@ -302,15 +288,34 @@ function ClientesPage({ isDarkMode }) {
                   </div>
                 </div>
                 <div className="flex items-center gap-3 w-full md:w-auto">
-                  <button onClick={() => fetchEstadoCuenta(cliente)} title="Ver Estado de Cuenta" className={`p-4 rounded-2xl transition-all ${isDarkMode ? "bg-violet-500/10 text-violet-400 hover:bg-violet-500/20" : "bg-violet-50 text-violet-600 hover:bg-violet-100"}`}><Receipt size={18}/></button>
+                  <button onClick={() => fetchEstadoCuenta(cliente)} className={`p-4 rounded-2xl transition-all ${isDarkMode ? "bg-violet-500/10 text-violet-400 hover:bg-violet-500/20" : "bg-violet-50 text-violet-600 hover:bg-violet-100"}`}><Receipt size={18}/></button>
                   <button onClick={() => seleccionarCliente(cliente)} className={`p-4 rounded-2xl ${isDarkMode ? "bg-white/5 text-amber-500 hover:bg-amber-500/20" : "bg-amber-50 text-amber-600 hover:bg-amber-100"}`}><Edit3 size={18}/></button>
-                  <button onClick={() => eliminarCliente(cliente.id)} className={`p-4 rounded-2xl ${isDarkMode ? "bg-white/5 text-red-500 hover:bg-red-500/20" : "bg-red-50 text-red-600 hover:bg-red-100"}`}><Trash2 size={18}/></button>
+                  <button onClick={() => setConfirmDelete(cliente)} className={`p-4 rounded-2xl ${isDarkMode ? "bg-white/5 text-red-500 hover:bg-red-500/20" : "bg-red-50 text-red-600 hover:bg-red-100"}`}><Trash2 size={18}/></button>
                 </div>
               </div>
             ))}
           </div>
         </div>
       </div>
+
+      {/* MODAL DE CONFIRMACIÓN DE BORRADO */}
+      {confirmDelete && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/90 backdrop-blur-xl p-6">
+          <div className={`w-full max-w-sm rounded-[3rem] p-10 border text-center animate-in zoom-in duration-300 ${isDarkMode ? "bg-slate-900 border-white/10 shadow-2xl" : "bg-white border-slate-200 shadow-2xl"}`}>
+            <div className="w-20 h-20 bg-red-500/20 text-red-500 rounded-full flex items-center justify-center mx-auto mb-6">
+              <Trash2 size={40} />
+            </div>
+            <h3 className={`text-2xl font-black mb-2 ${isDarkMode ? "text-white" : "text-slate-900"}`}>¿Estás seguro?</h3>
+            <p className="text-slate-500 text-sm font-bold uppercase tracking-widest mb-8 text-balance">
+              Se eliminará a <b>{confirmDelete.nombre}</b>. Esta acción no se puede deshacer.
+            </p>
+            <div className="flex gap-4">
+              <button onClick={() => setConfirmDelete(null)} className="flex-1 bg-slate-800 text-white py-4 rounded-2xl font-black text-xs uppercase tracking-widest">Cancelar</button>
+              <button onClick={() => eliminarCliente(confirmDelete.id)} className="flex-1 bg-red-600 text-white py-4 rounded-2xl font-black text-xs uppercase tracking-widest">Eliminar</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

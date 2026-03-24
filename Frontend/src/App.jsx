@@ -9,8 +9,10 @@ import HistorialPage from "./pages/HistorialPage";
 import AjustesPage from "./pages/AjustesPage";
 import LoginPage from "./pages/LoginPage";
 import ClientesPage from "./pages/ClientesPage";
+import { useToast, ToastContainer } from "./components/Notifications"; // 👈 Nuevo
 
 function App() {
+  const { toasts, showToast } = useToast(); // 👈 Nuevo
   const [isDarkMode, setIsDarkMode] = useState(() => {
     const savedTheme = localStorage.getItem('techpoint_theme');
     return savedTheme ? savedTheme === 'dark' : true;
@@ -21,7 +23,7 @@ function App() {
   });
 
   const [config, setConfig] = useState(null);
-  const [isLoading, setIsLoading] = useState(true); // 👈 Nuevo estado de carga
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     localStorage.setItem('techpoint_theme', isDarkMode ? 'dark' : 'light');
@@ -44,13 +46,11 @@ function App() {
     }
   }, [user]);
 
-  // --- FUNCIÓN DE CIERRE DE SESIÓN ---
   const logout = () => {
     localStorage.removeItem('techpoint_user');
     setUser(null);
   };
 
-  // --- RENDERIZADO DE SEGURIDAD ---
   if (isLoading && user) {
     return (
       <div className={`h-screen w-full flex items-center justify-center ${isDarkMode ? "bg-slate-950 text-white" : "bg-white text-slate-900"}`}>
@@ -64,8 +64,9 @@ function App() {
 
   return (
     <Router>
+      <ToastContainer toasts={toasts} /> {/* 👈 Contenedor Global */}
       {!user ? (
-        <LoginPage setUser={setUser} isDarkMode={isDarkMode} />
+        <LoginPage setUser={setUser} isDarkMode={isDarkMode} showToast={showToast} />
       ) : (
         <div className={`flex min-h-screen transition-colors duration-500 font-sans ${
           isDarkMode ? "bg-slate-950 text-slate-200" : "bg-slate-50 text-slate-900"
@@ -76,21 +77,21 @@ function App() {
               toggleTheme={() => setIsDarkMode(!isDarkMode)} 
               user={user} 
               logout={logout}
-              config={config || {}} // 👈 Enviamos un objeto vacío si falla la carga
+              config={config || {}} 
             />
           </div>
 
           <main className="flex-1 min-h-screen overflow-y-auto p-4 md:p-8 custom-scrollbar">
             <div className="max-w-[1400px] mx-auto">
               <Routes>
-                <Route path="/" element={<PosPage isDarkMode={isDarkMode} config={config} />} />
-                <Route path="/clientes" element={<ClientesPage isDarkMode={isDarkMode} />} />
+                <Route path="/" element={<PosPage isDarkMode={isDarkMode} config={config} showToast={showToast} />} />
+                <Route path="/clientes" element={<ClientesPage isDarkMode={isDarkMode} showToast={showToast} />} />
 
                 {user.role === 'admin' ? (
                   <>
-                    <Route path="/inventario" element={<InventarioPage isDarkMode={isDarkMode} />} />
-                    <Route path="/historial" element={<HistorialPage isDarkMode={isDarkMode} config={config} />} />
-                    <Route path="/ajustes" element={<AjustesPage isDarkMode={isDarkMode} />} />
+                    <Route path="/inventario" element={<InventarioPage isDarkMode={isDarkMode} showToast={showToast} />} />
+                    <Route path="/historial" element={<HistorialPage isDarkMode={isDarkMode} config={config} showToast={showToast} />} />
+                    <Route path="/ajustes" element={<AjustesPage isDarkMode={isDarkMode} showToast={showToast} />} />
                   </>
                 ) : (
                   <>
