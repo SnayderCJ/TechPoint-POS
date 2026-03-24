@@ -1,5 +1,10 @@
 from rest_framework import serializers
-from .models import Producto, Venta, DetalleVenta, GlobalConfig, Cliente
+from .models import Producto, Venta, DetalleVenta, GlobalConfig, Cliente, Abono
+
+class AbonoSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Abono
+        fields = '__all__'
 
 class ClienteSerializer(serializers.ModelSerializer):
     class Meta:
@@ -59,7 +64,7 @@ class VentaSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = Venta
-        fields = ['id', 'fecha', 'total', 'items', 'cliente', 'cliente_nombre']
+        fields = ['id', 'fecha', 'total', 'items', 'cliente', 'cliente_nombre', 'metodo_pago', 'saldo_pendiente']
 
 class GlobalConfigSerializer(serializers.ModelSerializer):
     class Meta:

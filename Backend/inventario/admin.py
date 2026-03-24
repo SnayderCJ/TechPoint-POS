@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Producto, Cliente, Venta, DetalleVenta, GlobalConfig
+from .models import Producto, Cliente, Venta, DetalleVenta, GlobalConfig, Abono
 
 @admin.register(Producto)
 class ProductoAdmin(admin.ModelAdmin):
@@ -17,11 +17,21 @@ class DetalleVentaInline(admin.TabularInline): # Para ver los productos vendidos
     extra = 0
     readonly_fields = ('producto', 'cantidad', 'precio_unitario')
 
+class AbonoInline(admin.TabularInline): # Para ver los abonos DENTRO de la venta
+    model = Abono
+    extra = 0
+    readonly_fields = ('fecha',)
+
 @admin.register(Venta)
 class VentaAdmin(admin.ModelAdmin):
-    list_display = ('id', 'fecha', 'cliente', 'total')
-    list_filter = ('fecha', 'cliente')
-    inlines = [DetalleVentaInline]
+    list_display = ('id', 'fecha', 'cliente', 'metodo_pago', 'total', 'saldo_pendiente')
+    list_filter = ('fecha', 'cliente', 'metodo_pago')
+    inlines = [DetalleVentaInline, AbonoInline]
+
+@admin.register(Abono)
+class AbonoAdmin(admin.ModelAdmin):
+    list_display = ('venta', 'monto', 'metodo_pago', 'fecha')
+    list_filter = ('metodo_pago', 'fecha')
 
 @admin.register(GlobalConfig)
 class GlobalConfigAdmin(admin.ModelAdmin):

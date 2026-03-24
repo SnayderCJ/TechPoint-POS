@@ -1,14 +1,16 @@
 import { useState, useEffect } from 'react';
-import { ShoppingCart, Search, Package, CheckCircle, Zap, Trash2, Sparkles, Cpu, Loader2, User } from 'lucide-react';
+import { ShoppingCart, Search, Package, CheckCircle, Zap, Trash2, Sparkles, Cpu, Loader2, User, CreditCard, Banknote, RefreshCcw } from 'lucide-react';
 
 function PosPage({ isDarkMode, config }) { 
   const [busqueda, setBusqueda] = useState(""); 
   const [productos, setProductos] = useState([]);
   const [clientes, setClientes] = useState([]);
   const [clienteSeleccionado, setClienteSeleccionado] = useState(null);
+  const [metodoPago, setMetodoPago] = useState("EFECTIVO"); // Nuevo estado
   const [loading, setLoading] = useState(true); 
   const [carrito, setCarrito] = useState([]);
   const [showModal, setShowModal] = useState(false);
+  const [errorVenta, setErrorVenta] = useState("");
 
   const nombreEmpresa = config?.nombre_negocio || "TechPoint";
   const ivaPorcentaje = parseFloat(config?.iva_porcentaje || 15);
@@ -60,6 +62,7 @@ function PosPage({ isDarkMode, config }) {
   const totalConIva = (subtotalTotal * (1 + (ivaPorcentaje / 100))).toFixed(2);
 
   const procesarVentaFinal = async () => {
+    setErrorVenta("");
     const idsUnicos = [...new Set(carrito.map(p => p.id))];
     const items = idsUnicos.map(id => ({
       id: id,
@@ -73,19 +76,24 @@ function PosPage({ isDarkMode, config }) {
         body: JSON.stringify({ 
           total: totalConIva, 
           items,
-          cliente: clienteSeleccionado?.id || null 
+          cliente: clienteSeleccionado?.id || null,
+          metodo_pago: metodoPago // Enviamos el método de pago al backend
         })
       });
+
+      const resData = await response.json();
 
       if (response.ok) {
         await fetchProductos();
         setCarrito([]);
         setClienteSeleccionado(null);
+        setMetodoPago("EFECTIVO");
         setShowModal(true);
       } else {
-        alert("❌ Error en la transacción.");
+        // Mostramos el error que venga del backend (Ej: "Cupo excedido")
+        setErrorVenta(resData.error || "Error en la transacción.");
       }
-    } catch (err) { alert("❌ Error de enlace."); }
+    } catch (err) { setErrorVenta("Error de enlace con el servidor."); }
   };
 
   const productosFiltrados = productos.filter(p => 
@@ -96,6 +104,7 @@ function PosPage({ isDarkMode, config }) {
   return (
     <div className="flex flex-col space-y-8 animate-in fade-in slide-in-from-top-4 duration-700 pb-20">
       
+      {/* HEADER DINÁMICO */}
       <header className={`relative transition-all duration-500 border p-8 md:p-12 rounded-[2.5rem] md:rounded-[3.5rem] shadow-2xl overflow-hidden shrink-0 ${
         isDarkMode 
           ? "bg-slate-900/80 backdrop-blur-xl border-white/10 shadow-black/40" 
@@ -133,6 +142,7 @@ function PosPage({ isDarkMode, config }) {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2 space-y-6">
+          {/* BARRA DE BÚSQUEDA */}
           <div className={`flex flex-col md:flex-row items-center justify-between gap-6 p-6 rounded-3xl border transition-all ${
             isDarkMode ? "bg-slate-900/40 border-white/5" : "bg-white border-slate-200 shadow-sm"
           }`}>
@@ -207,6 +217,7 @@ function PosPage({ isDarkMode, config }) {
           </div>
         </div>
 
+        {/* SIDEBAR DE CARRITO */}
         <aside className="relative">
           <div className={`sticky top-8 p-8 rounded-[3rem] border transition-all min-h-[600px] flex flex-col ${
             isDarkMode 
@@ -217,43 +228,82 @@ function PosPage({ isDarkMode, config }) {
               <Sparkles className="text-violet-500" size={24} /> Carrito
             </h2>
 
-            <div className={`mb-8 p-5 rounded-3xl border transition-all ${
+            {/* SECTOR DE CLIENTE Y PAGO */}
+            <div className={`mb-8 p-6 rounded-[2rem] border space-y-6 transition-all ${
               isDarkMode ? "bg-slate-950/50 border-white/5" : "bg-slate-50 border-slate-100 shadow-inner"
             }`}>
-              <label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 mb-3 block">
-                Asignar Cliente (Opcional)
-              </label>
-              <div className="relative">
-                <User className="absolute left-4 top-3.5 text-slate-400" size={16} />
-                <select 
-                  className={`w-full pl-12 pr-5 py-3 rounded-2xl border outline-none font-bold text-xs transition-all appearance-none ${
-                    isDarkMode 
-                    ? "bg-slate-900 border-white/10 text-white focus:border-violet-500" 
-                    : "bg-white border-slate-200 text-slate-900 focus:border-violet-500 shadow-sm"
-                  }`}
-                  value={clienteSeleccionado?.id || ""}
-                  onChange={(e) => {
-                    const id = e.target.value;
-                    const c = clientes.find(cli => cli.id === parseInt(id));
-                    setClienteSeleccionado(c || null);
-                  }}
-                >
-                  <option value="">Consumidor Final</option>
-                  {clientes.map(cli => (
-                    <option key={cli.id} value={cli.id}>{cli.nombre} - {cli.identificacion}</option>
-                  ))}
-                </select>
+              
+              {/* SELECTOR CLIENTE */}
+              <div>
+                <label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 mb-3 block">
+                  Asignar Cliente
+                </label>
+                <div className="relative">
+                  <User className="absolute left-4 top-3.5 text-slate-400" size={16} />
+                  <select 
+                    className={`w-full pl-12 pr-5 py-3 rounded-2xl border outline-none font-bold text-xs transition-all appearance-none ${
+                      isDarkMode 
+                      ? "bg-slate-900 border-white/10 text-white focus:border-violet-500" 
+                      : "bg-white border-slate-200 text-slate-900 focus:border-violet-500 shadow-sm"
+                    }`}
+                    value={clienteSeleccionado?.id || ""}
+                    onChange={(e) => {
+                      const id = e.target.value;
+                      const c = clientes.find(cli => cli.id === parseInt(id));
+                      setClienteSeleccionado(c || null);
+                    }}
+                  >
+                    <option value="">Consumidor Final</option>
+                    {clientes.map(cli => (
+                      <option key={cli.id} value={cli.id}>{cli.nombre} - {cli.identificacion}</option>
+                    ))}
+                  </select>
+                </div>
               </div>
-              {clienteSeleccionado && (
-                <div className="mt-4 flex items-center gap-2 animate-in zoom-in duration-300">
-                  <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
-                  <span className={`text-[10px] font-black uppercase tracking-widest ${isDarkMode ? "text-violet-400" : "text-violet-600"}`}>
-                    Cliente Identificado
-                  </span>
+
+              {/* MÉTODO DE PAGO */}
+              <div>
+                <label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 mb-3 block">
+                  Forma de Pago
+                </label>
+                <div className="grid grid-cols-3 gap-3">
+                  {[
+                    { id: 'EFECTIVO', icon: Banknote, label: 'Efectivo' },
+                    { id: 'TRANSFERENCIA', icon: RefreshCcw, label: 'Transf.' },
+                    { id: 'CREDITO', icon: CreditCard, label: 'Crédito' }
+                  ].map(tipo => (
+                    <button
+                      key={tipo.id}
+                      onClick={() => setMetodoPago(tipo.id)}
+                      className={`flex flex-col items-center justify-center p-3 rounded-2xl border transition-all gap-2 ${
+                        metodoPago === tipo.id 
+                        ? (isDarkMode ? "bg-violet-600 border-violet-500 text-white" : "bg-violet-600 border-violet-600 text-white shadow-lg shadow-violet-600/30")
+                        : (isDarkMode ? "bg-slate-900 border-white/5 text-slate-400" : "bg-white border-slate-200 text-slate-500")
+                      }`}
+                    >
+                      <tipo.icon size={18} />
+                      <span className="text-[9px] font-black uppercase tracking-tighter">{tipo.label}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* INDICADOR DE CRÉDITO */}
+              {clienteSeleccionado && metodoPago === 'CREDITO' && (
+                <div className={`p-4 rounded-2xl border animate-in slide-in-from-bottom-2 ${
+                  isDarkMode ? "bg-violet-500/10 border-violet-500/20" : "bg-violet-50 border-violet-100"
+                }`}>
+                  <div className="flex justify-between items-center mb-1">
+                    <span className="text-[9px] font-black uppercase text-violet-500">Cupo Máximo:</span>
+                    <span className={`text-xs font-black ${isDarkMode ? "text-white" : "text-slate-900"}`}>
+                      ${parseFloat(clienteSeleccionado.cupo_credito).toFixed(2)}
+                    </span>
+                  </div>
                 </div>
               )}
             </div>
             
+            {/* LISTA DE CARRITO */}
             <div className="flex-1 space-y-4 overflow-y-auto pr-2 custom-scrollbar">
               {carrito.length === 0 ? (
                 <div className="h-full flex flex-col items-center justify-center opacity-10 text-center py-20 grayscale">
@@ -282,8 +332,16 @@ function PosPage({ isDarkMode, config }) {
               )}
             </div>
 
+            {/* BOTÓN Y TOTALES */}
             {carrito.length > 0 && (
-              <div className={`mt-10 pt-8 border-t space-y-8 ${isDarkMode ? "border-white/10" : "border-slate-200"}`}>
+              <div className={`mt-10 pt-8 border-t space-y-6 ${isDarkMode ? "border-white/10" : "border-slate-200"}`}>
+                
+                {errorVenta && (
+                  <div className="p-4 bg-red-500/10 border border-red-500/20 text-red-500 text-[10px] font-black uppercase tracking-widest rounded-2xl animate-bounce">
+                    ⚠️ {errorVenta}
+                  </div>
+                )}
+
                 <div className="text-right">
                   <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Total Liquidación (IVA {ivaPorcentaje}%)</p>
                   <p className={`text-5xl font-black tracking-tighter ${isDarkMode ? "text-white" : "text-slate-950"}`}>
@@ -294,7 +352,7 @@ function PosPage({ isDarkMode, config }) {
                   onClick={procesarVentaFinal} 
                   className="w-full bg-gradient-to-br from-violet-600 to-indigo-700 text-white py-6 rounded-[2.2rem] font-black text-lg shadow-2xl shadow-violet-600/40 hover:bg-violet-500 transition-all active:scale-95 uppercase tracking-widest"
                 >
-                  Generar Transacción
+                  Finalizar Venta
                 </button>
               </div>
             )}
@@ -302,6 +360,7 @@ function PosPage({ isDarkMode, config }) {
         </aside>
       </div>
 
+      {/* MODAL DE ÉXITO */}
       {showModal && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/90 backdrop-blur-xl p-6">
           <div className={`w-full max-w-sm rounded-[3rem] p-10 border text-center animate-in zoom-in duration-300 ${isDarkMode ? "bg-slate-900 border-white/10" : "bg-white border-slate-200 shadow-2xl"}`}>
@@ -309,7 +368,7 @@ function PosPage({ isDarkMode, config }) {
               <CheckCircle size={40} />
             </div>
             <h3 className="text-2xl font-black mb-2">¡Venta Exitosa!</h3>
-            <p className="text-slate-500 text-sm font-bold uppercase tracking-widest mb-8">Stock actualizado en PostgreSQL</p>
+            <p className="text-slate-500 text-sm font-bold uppercase tracking-widest mb-8">Base de Datos Milagro Actualizada</p>
             <button onClick={() => setShowModal(false)} className="w-full bg-slate-800 text-white py-4 rounded-2xl font-black text-xs uppercase tracking-widest">
               Continuar
             </button>
