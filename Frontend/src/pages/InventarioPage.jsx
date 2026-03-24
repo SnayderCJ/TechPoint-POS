@@ -1,16 +1,13 @@
-import React, { useState, useEffect } from 'react';
-import { Package, Plus, Edit, Trash2, ImageOff, X, Save, Upload, CheckCircle, Barcode, Layers } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { PackagePlus, Package, Search, Trash2, Edit3, CheckCircle, AlertCircle, X, Loader2, Image as ImageIcon, BarChart3 } from 'lucide-react';
 
-const InventarioPage = ({ isDarkMode }) => {
+function InventarioPage({ isDarkMode, showToast }) {
   const [productos, setProductos] = useState([]);
   const [loading, setLoading] = useState(true);
-  
-  // Estados para el CRUD
-  const [showModal, setShowModal] = useState(false);
-  const [editMode, setEditMode] = useState(false);
-  const [currentId, setCurrentId] = useState(null);
-  
-  // Estado del Formulario actualizado con tu modelo de Django
+  const [busqueda, setBusqueda] = useState("");
+  const [editandoId, setEditandoId] = useState(null);
+  const [confirmDelete, setConfirmDelete] = useState(null);
+
   const [formData, setFormData] = useState({
     nombre: '',
     categoria: '',
@@ -22,32 +19,43 @@ const InventarioPage = ({ isDarkMode }) => {
 
   const fetchProductos = async () => {
     try {
-      const res = await fetch('http://localhost:8000/api/productos/');
-      const data = await res.json();
-      setProductos(data);
+      const response = await fetch('http://localhost:8000/api/productos/');
+      const data = await response.json();
+      setProductos(Array.isArray(data) ? data : []);
+    } catch (err) {
+      showToast("Error al conectar con el servidor de inventario", "error");
+    } finally {
       setLoading(false);
-    } catch (err) { console.error("Error al sincronizar con PostgreSQL:", err); }
+    }
   };
 
   useEffect(() => { fetchProductos(); }, []);
 
-  const openModal = (prod = null) => {
-    if (prod) {
-      setEditMode(true);
-      setCurrentId(prod.id);
-      setFormData({
-        nombre: prod.nombre,
-        categoria: prod.categoria,
-        precio: prod.precio,
-        stock: prod.stock,
-        codigo_barras: prod.codigo_barras,
-        imagen: null // La imagen se mantiene en el servidor a menos que subas una nueva
-      });
+  const handleInputChange = (e) => {
+    const { name, value, files } = e.target;
+    if (name === 'imagen') {
+      setFormData({ ...formData, imagen: files[0] });
     } else {
-      setEditMode(false);
-      setFormData({ nombre: '', categoria: '', precio: '', stock: '0', codigo_barras: '', imagen: null });
+      setFormData({ ...formData, [name]: value });
     }
-    setShowModal(true);
+  };
+
+  const seleccionarProducto = (prod) => {
+    setEditandoId(prod.id);
+    setFormData({
+      nombre: prod.nombre,
+      categoria: prod.categoria,
+      precio: prod.precio,
+      stock: prod.stock,
+      codigo_barras: prod.codigo_barras,
+      imagen: null // No precargamos el archivo, solo si el usuario sube uno nuevo
+    });
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const cancelarEdicion = () => {
+    setEditandoId(null);
+    setFormData({ nombre: '', categoria: '', precio: '', stock: '', codigo_barras: '', imagen: null });
   };
 
   const handleSubmit = async (e) => {
@@ -60,157 +68,181 @@ const InventarioPage = ({ isDarkMode }) => {
     data.append('codigo_barras', formData.codigo_barras);
     if (formData.imagen) data.append('imagen', formData.imagen);
 
-    const url = editMode 
-      ? `http://localhost:8000/api/productos/${currentId}/` 
-      : 'http://localhost:8000/api/productos/';
-    
-    const method = editMode ? 'PATCH' : 'POST';
+    const url = editandoId ? `http://localhost:8000/api/productos/${editandoId}/` : 'http://localhost:8000/api/productos/';
+    const method = editandoId ? 'PATCH' : 'POST';
 
     try {
-      const res = await fetch(url, { method, body: data });
-      if (res.ok) {
+      const response = await fetch(url, { method, body: data });
+      if (response.ok) {
+        showToast(editandoId ? "Producto actualizado" : "Producto registrado");
+        cancelarEdicion();
         fetchProductos();
-        setShowModal(false);
       } else {
-        const errorData = await res.json();
-        alert(`Error: ${JSON.stringify(errorData)}`);
+        const errData = await response.json();
+        showToast(errData.codigo_barras ? "El código de barras ya existe" : "Error al procesar producto", "error");
       }
-    } catch (err) { alert("Error de red con el servidor de Django"); }
+    } catch (err) {
+      showToast("Error de conexión con el backend", "error");
+    }
   };
 
-  const handleDelete = async (id) => {
-    if (!window.confirm("¿Confirmas la eliminación permanente de este registro?")) return;
+  const eliminarProducto = async (id) => {
     try {
-      await fetch(`http://localhost:8000/api/productos/${id}/`, { method: 'DELETE' });
-      fetchProductos();
-    } catch (err) { console.error(err); }
+      const response = await fetch(`http://localhost:8000/api/productos/${id}/`, { method: 'DELETE' });
+      if (response.ok) {
+        showToast("Producto eliminado del stock");
+        // SI ELIMINAMOS EL PRODUCTO QUE ESTÁBAMOS EDITANDO, LIMPIAMOS EL FORMULARIO
+        if (editandoId === id) {
+          cancelarEdicion();
+        }
+        fetchProductos();
+      } else {
+        showToast("No se puede eliminar (tiene ventas asociadas)", "error");
+      }
+    } catch (err) {
+      showToast("Error al intentar eliminar", "error");
+    }
+    setConfirmDelete(null);
   };
+
+  const productosFiltrados = productos.filter(p => 
+    p.nombre.toLowerCase().includes(busqueda.toLowerCase()) ||
+    p.codigo_barras.includes(busqueda)
+  );
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-700">
+    <div className="flex flex-col space-y-10 animate-in fade-in duration-700 pb-20">
       
-      {/* ---- Header SaaS ---- */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+      {/* HEADER */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div>
-          <h2 className={`text-4xl font-black tracking-tighter flex items-center gap-4 ${isDarkMode ? "text-white" : "text-slate-900"}`}>
-            <div className={`p-3 rounded-2xl border ${isDarkMode ? "bg-violet-500/10 border-violet-500/20" : "bg-violet-50 border-violet-100"}`}>
-              <Package className="text-violet-500" size={32} />
-            </div>
-            Gestión de <span className="text-violet-600">Stock</span>
-          </h2>
-          <p className="text-slate-500 font-semibold uppercase tracking-widest text-[10px] mt-3 ml-1">Terminal Administrativa • UNEMI</p>
-        </div>
-
-        <button onClick={() => openModal()} className="bg-violet-600 hover:bg-violet-500 text-white px-8 py-4 rounded-3xl font-bold flex items-center gap-3 transition-all shadow-lg shadow-violet-600/20 active:scale-95 text-xs uppercase tracking-widest">
-          <Plus size={18} /> Registrar Producto
-        </button>
-      </div>
-
-      {/* ---- Tabla de Inventario ---- */}
-      <div className={`rounded-[2.5rem] border transition-all overflow-hidden ${isDarkMode ? "bg-slate-900/60 backdrop-blur-xl border-white/10 shadow-2xl" : "bg-white border-slate-200 shadow-md"}`}>
-        <div className="overflow-x-auto">
-          <table className="w-full text-left">
-            <thead>
-              <tr className={`border-b ${isDarkMode ? "bg-white/5 border-white/5" : "bg-slate-50 border-slate-100"}`}>
-                <th className="px-10 py-6 text-[11px] font-bold text-slate-500 uppercase tracking-widest">Hardware / SKU</th>
-                <th className="px-8 py-6 text-[11px] font-bold text-slate-500 uppercase tracking-widest text-center">Stock</th>
-                <th className="px-8 py-6 text-[11px] font-bold text-slate-500 uppercase tracking-widest text-right">Precio</th>
-                <th className="px-10 py-6 text-[11px] font-bold text-slate-500 uppercase tracking-widest text-center">Acciones</th>
-              </tr>
-            </thead>
-            <tbody className={`divide-y ${isDarkMode ? "divide-white/5" : "divide-slate-100"}`}>
-              {productos.map((prod) => (
-                <tr key={prod.id} className={`transition-colors ${isDarkMode ? "hover:bg-white/[0.02]" : "hover:bg-slate-50/50"}`}>
-                  <td className="px-10 py-6">
-                    <div className="flex items-center gap-5">
-                      <div className={`w-14 h-14 rounded-2xl p-1 border flex items-center justify-center overflow-hidden ${isDarkMode ? "bg-slate-950 border-white/5" : "bg-white border-slate-200"}`}>
-                        {prod.imagen ? <img src={prod.imagen} className="w-full h-full object-contain" alt="" /> : <ImageOff className="text-slate-300" size={20} />}
-                      </div>
-                      <div>
-                        <p className={`text-sm font-bold ${isDarkMode ? "text-white" : "text-slate-800"}`}>{prod.nombre}</p>
-                        <p className="text-[9px] text-violet-500 font-black uppercase tracking-tighter mt-0.5 flex items-center gap-1">
-                          <Barcode size={10} /> {prod.codigo_barras}
-                        </p>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-8 py-6 text-center">
-                    <span className={`px-4 py-1.5 rounded-xl font-black text-xs ${prod.stock < 3 ? "bg-red-500/10 text-red-500" : (isDarkMode ? "bg-slate-800 text-slate-200" : "bg-slate-100 text-slate-700")}`}>{prod.stock} PCS</span>
-                  </td>
-                  <td className={`px-8 py-6 text-right font-black text-lg ${isDarkMode ? "text-white" : "text-slate-900"}`}>${parseFloat(prod.precio).toFixed(2)}</td>
-                  <td className="px-10 py-6 text-center">
-                    <div className="flex justify-center gap-2">
-                      <button onClick={() => openModal(prod)} className={`p-2.5 rounded-xl border transition-all ${isDarkMode ? "bg-white/5 text-slate-400 border-transparent hover:text-violet-400" : "bg-slate-50 text-slate-400 border-slate-100 hover:text-violet-600"}`}><Edit size={16} /></button>
-                      <button onClick={() => handleDelete(prod.id)} className={`p-2.5 rounded-xl border transition-all ${isDarkMode ? "bg-white/5 text-slate-400 border-transparent hover:text-red-400" : "bg-slate-50 text-slate-400 border-slate-100 hover:text-red-600"}`}><Trash2 size={16} /></button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <h1 className={`text-4xl font-black tracking-tight ${isDarkMode ? "text-white" : "text-slate-900"}`}>
+            Control de <span className="text-violet-600">Inventario</span>
+          </h1>
+          <p className="text-slate-500 font-bold uppercase tracking-widest text-[10px] mt-2">
+            Hardware & Componentes • Milagro • UNEMI
+          </p>
         </div>
       </div>
 
-      {/* ---- MODAL CRUD PROFESIONAL ---- */}
-      {showModal && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4">
-          <div className={`rounded-[3rem] p-10 max-w-2xl w-full shadow-2xl border animate-in zoom-in-95 duration-300 ${isDarkMode ? "bg-slate-900 border-white/10" : "bg-white border-slate-200"}`}>
-            <div className="flex justify-between items-center mb-8">
-              <h3 className={`text-2xl font-black ${isDarkMode ? "text-white" : "text-slate-900"}`}>{editMode ? "Actualizar Hardware" : "Nuevo Componente"}</h3>
-              <button onClick={() => setShowModal(false)} className="p-2 rounded-full hover:bg-red-500/10 text-slate-400 hover:text-red-500 transition-all"><X /></button>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
+        
+        {/* FORMULARIO */}
+        <div className={`lg:col-span-1 p-8 rounded-[2.5rem] border h-fit sticky top-8 ${
+          isDarkMode ? "bg-slate-900/50 border-white/10 shadow-2xl" : "bg-white border-slate-200 shadow-xl shadow-slate-200"
+        }`}>
+          <div className="flex items-center justify-between mb-8">
+            <h2 className={`text-xl font-black flex items-center gap-3 ${isDarkMode ? "text-white" : "text-slate-800"}`}>
+              {editandoId ? <Edit3 className="text-amber-500" /> : <PackagePlus className="text-violet-500" />}
+              {editandoId ? "Editar Hardware" : "Nuevo Componente"}
+            </h2>
+            {editandoId && (
+              <button onClick={cancelarEdicion} className="text-slate-400 hover:text-red-500 transition-colors">
+                <X size={20} />
+              </button>
+            )}
+          </div>
+
+          <form onSubmit={handleSubmit} className="space-y-5">
+            <div>
+              <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2 block">Nombre del Producto</label>
+              <input name="nombre" value={formData.nombre} onChange={handleInputChange} required className={`w-full px-5 py-4 rounded-2xl border outline-none font-bold text-sm transition-all ${isDarkMode ? "bg-slate-950 border-white/10 text-white focus:border-violet-500" : "bg-slate-50 border-slate-200 focus:border-violet-500"}`}/>
             </div>
 
-            <form onSubmit={handleSubmit} className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="col-span-2 space-y-1.5">
-                  <label className="text-[10px] font-bold text-slate-500 uppercase ml-2">Nombre del Producto</label>
-                  <input required type="text" className={`w-full p-4 rounded-2xl outline-none border transition-all ${isDarkMode ? "bg-slate-950 border-white/5 text-white focus:border-violet-500" : "bg-slate-50 border-slate-200 text-slate-900 focus:border-violet-500"}`}
-                    value={formData.nombre} onChange={(e) => setFormData({...formData, nombre: e.target.value})} placeholder="Ej: AMD Ryzen 5 5600G" />
-                </div>
-                
-                <div className="space-y-1.5">
-                  <label className="text-[10px] font-bold text-slate-500 uppercase ml-2">Código de Barras (Único)</label>
-                  <input required type="text" className={`w-full p-4 rounded-2xl outline-none border transition-all ${isDarkMode ? "bg-slate-950 border-white/5 text-white" : "bg-slate-50 border-slate-200 text-slate-900"}`}
-                    value={formData.codigo_barras} onChange={(e) => setFormData({...formData, codigo_barras: e.target.value})} placeholder="7890..." />
-                </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2 block">Precio ($)</label>
+                <input name="precio" type="number" step="0.01" value={formData.precio} onChange={handleInputChange} required className={`w-full px-5 py-4 rounded-2xl border outline-none font-black text-sm ${isDarkMode ? "bg-slate-950 border-white/10 text-white" : "bg-slate-50 border-slate-200"}`}/>
+              </div>
+              <div>
+                <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2 block">Stock Inicial</label>
+                <input name="stock" type="number" value={formData.stock} onChange={handleInputChange} required className={`w-full px-5 py-4 rounded-2xl border outline-none font-black text-sm ${isDarkMode ? "bg-slate-950 border-white/10 text-white" : "bg-slate-50 border-slate-200"}`}/>
+              </div>
+            </div>
 
-                <div className="space-y-1.5">
-                  <label className="text-[10px] font-bold text-slate-500 uppercase ml-2">Categoría</label>
-                  <input required type="text" className={`w-full p-4 rounded-2xl outline-none border transition-all ${isDarkMode ? "bg-slate-950 border-white/5 text-white" : "bg-slate-50 border-slate-200 text-slate-900"}`}
-                    value={formData.categoria} onChange={(e) => setFormData({...formData, categoria: e.target.value})} placeholder="Procesadores" />
-                </div>
+            <div>
+              <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2 block">Código de Barras</label>
+              <input name="codigo_barras" value={formData.codigo_barras} onChange={handleInputChange} required className={`w-full px-5 py-4 rounded-2xl border outline-none font-bold text-sm ${isDarkMode ? "bg-slate-950 border-white/10 text-white" : "bg-slate-50 border-slate-200"}`}/>
+            </div>
 
-                <div className="space-y-1.5">
-                  <label className="text-[10px] font-bold text-slate-500 uppercase ml-2">Precio de Venta ($)</label>
-                  <input required type="number" step="0.01" className={`w-full p-4 rounded-2xl outline-none border transition-all ${isDarkMode ? "bg-slate-950 border-white/5 text-white" : "bg-slate-50 border-slate-200 text-slate-900"}`}
-                    value={formData.precio} onChange={(e) => setFormData({...formData, precio: e.target.value})} />
-                </div>
+            <div>
+              <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2 block">Categoría</label>
+              <select name="categoria" value={formData.categoria} onChange={handleInputChange} required className={`w-full px-5 py-4 rounded-2xl border outline-none font-bold text-sm ${isDarkMode ? "bg-slate-950 border-white/10 text-white" : "bg-slate-50 border-slate-200"}`}>
+                <option value="">Seleccionar...</option>
+                <option value="Procesadores">Procesadores</option>
+                <option value="Tarjetas Gráficas">Tarjetas Gráficas</option>
+                <option value="Almacenamiento">Almacenamiento</option>
+                <option value="Memorias RAM">Memorias RAM</option>
+                <option value="Periféricos">Periféricos</option>
+              </select>
+            </div>
 
-                <div className="space-y-1.5">
-                  <label className="text-[10px] font-bold text-slate-500 uppercase ml-2">Stock Disponible</label>
-                  <input required type="number" className={`w-full p-4 rounded-2xl outline-none border transition-all ${isDarkMode ? "bg-slate-950 border-white/5 text-white" : "bg-slate-50 border-slate-200 text-slate-900"}`}
-                    value={formData.stock} onChange={(e) => setFormData({...formData, stock: e.target.value})} />
-                </div>
+            <div>
+              <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2 block">Imagen del Producto</label>
+              <input type="file" name="imagen" onChange={handleInputChange} className="text-xs font-bold text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-black file:bg-violet-500 file:text-white hover:file:bg-violet-600 cursor-pointer w-full"/>
+            </div>
 
-                <div className="col-span-2 space-y-1.5">
-                  <label className="text-[10px] font-bold text-slate-500 uppercase ml-2">Fotografía del Componente</label>
-                  <input type="file" className="hidden" id="upload-photo" accept="image/*" onChange={(e) => setFormData({...formData, imagen: e.target.files[0]})} />
-                  <label htmlFor="upload-photo" className={`w-full p-6 rounded-2xl border-2 border-dashed flex flex-col items-center justify-center gap-2 cursor-pointer transition-all ${formData.imagen ? "border-violet-500 bg-violet-500/5 text-violet-500" : "border-slate-300 text-slate-400 hover:border-violet-400"}`}>
-                    {formData.imagen ? <CheckCircle /> : <Upload size={24} />}
-                    <span className="text-[10px] font-black uppercase tracking-widest">{formData.imagen ? formData.imagen.name : "Seleccionar Archivo"}</span>
-                  </label>
+            <button type="submit" className={`w-full py-5 rounded-[1.8rem] font-black text-sm uppercase tracking-widest transition-all shadow-lg ${editandoId ? "bg-amber-500 text-white shadow-amber-500/30" : "bg-violet-600 text-white shadow-violet-600/30"}`}>
+              {editandoId ? "Guardar Cambios" : "Añadir al Stock"}
+            </button>
+          </form>
+        </div>
+
+        {/* LISTADO DE PRODUCTOS */}
+        <div className="lg:col-span-2 space-y-6">
+          <div className={`p-6 rounded-3xl border flex items-center gap-4 transition-all ${isDarkMode ? "bg-slate-900/40 border-white/5" : "bg-white border-slate-200 shadow-sm"}`}>
+            <Search className="text-slate-400" size={20} />
+            <input type="text" placeholder="Buscar por nombre o código..." className={`w-full bg-transparent outline-none font-bold text-sm ${isDarkMode ? "text-white" : "text-slate-900"}`} value={busqueda} onChange={(e) => setBusqueda(e.target.value)}/>
+          </div>
+
+          <div className="grid grid-cols-1 gap-4">
+            {loading ? (
+              <div className="p-20 text-center animate-pulse font-black text-xs uppercase tracking-widest">Sincronizando Almacén...</div>
+            ) : productosFiltrados.map(prod => (
+              <div key={prod.id} className={`p-5 rounded-[2rem] border transition-all duration-300 flex flex-col md:flex-row justify-between items-center gap-6 ${isDarkMode ? "bg-slate-900/60 border-white/5 hover:border-violet-500/40" : "bg-white border-slate-100 hover:border-violet-400 shadow-sm"}`}>
+                <div className="flex items-center gap-6 w-full overflow-hidden">
+                  <div className={`w-16 h-16 rounded-2xl overflow-hidden p-2 shrink-0 ${isDarkMode ? "bg-slate-950" : "bg-slate-50 border"}`}>
+                    <img src={prod.imagen?.startsWith('http') ? prod.imagen : `http://localhost:8000${prod.imagen}`} className="w-full h-full object-contain" alt=""/>
+                  </div>
+                  <div className="overflow-hidden">
+                    <h3 className={`font-black text-lg truncate ${isDarkMode ? "text-white" : "text-slate-800"}`}>{prod.nombre}</h3>
+                    <div className="flex flex-wrap gap-2 mt-1">
+                      <span className="text-[9px] font-black uppercase text-slate-500 bg-slate-500/10 px-2 py-0.5 rounded-md">{prod.categoria}</span>
+                      <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-md ${prod.stock <= 5 ? "bg-red-500/10 text-red-500" : "bg-green-500/10 text-green-500"}`}>Stock: {prod.stock}</span>
+                      <span className="text-[9px] font-black uppercase text-violet-500 bg-violet-500/10 px-2 py-0.5 rounded-md">${parseFloat(prod.precio).toFixed(2)}</span>
+                    </div>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3 w-full md:w-auto">
+                  <button onClick={() => seleccionarProducto(prod)} className={`p-4 rounded-2xl ${isDarkMode ? "bg-white/5 text-amber-500" : "bg-amber-50 text-amber-600"}`}><Edit3 size={18}/></button>
+                  <button onClick={() => setConfirmDelete(prod)} className={`p-4 rounded-2xl ${isDarkMode ? "bg-white/5 text-red-500" : "bg-red-50 text-red-600"}`}><Trash2 size={18}/></button>
                 </div>
               </div>
+            ))}
+          </div>
+        </div>
+      </div>
 
-              <button type="submit" className="w-full bg-violet-600 hover:bg-violet-500 text-white py-5 rounded-3xl font-black shadow-xl shadow-violet-600/20 active:scale-95 transition-all flex items-center justify-center gap-3 text-sm uppercase tracking-widest">
-                <Save size={20} /> {editMode ? "Confirmar Cambios" : "Guardar en Base de Datos"}
-              </button>
-            </form>
+      {/* MODAL DE CONFIRMACIÓN */}
+      {confirmDelete && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/90 backdrop-blur-xl p-6">
+          <div className={`w-full max-w-sm rounded-[3rem] p-10 border text-center animate-in zoom-in duration-300 ${isDarkMode ? "bg-slate-900 border-white/10 shadow-2xl" : "bg-white border-slate-200 shadow-2xl"}`}>
+            <div className="w-20 h-20 bg-red-500/20 text-red-500 rounded-full flex items-center justify-center mx-auto mb-6">
+              <Trash2 size={40} />
+            </div>
+            <h3 className={`text-2xl font-black mb-2 ${isDarkMode ? "text-white" : "text-slate-900"}`}>¿Retirar Stock?</h3>
+            <p className="text-slate-500 text-sm font-bold uppercase tracking-widest mb-8 text-balance">
+              Eliminarás <b>{confirmDelete.nombre}</b> permanentemente del inventario.
+            </p>
+            <div className="flex gap-4">
+              <button onClick={() => setConfirmDelete(null)} className="flex-1 bg-slate-800 text-white py-4 rounded-2xl font-black text-xs uppercase tracking-widest">Cancelar</button>
+              <button onClick={() => eliminarProducto(confirmDelete.id)} className="flex-1 bg-red-600 text-white py-4 rounded-2xl font-black text-xs uppercase tracking-widest">Eliminar</button>
+            </div>
           </div>
         </div>
       )}
     </div>
   );
-};
+}
 
 export default InventarioPage;

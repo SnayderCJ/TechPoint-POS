@@ -123,6 +123,10 @@ function ClientesPage({ isDarkMode, showToast }) {
       const response = await fetch(`http://localhost:8000/api/clientes/${id}/`, { method: 'DELETE' });
       if (response.ok) {
         showToast("Cliente eliminado");
+        // SI ELIMINAMOS AL CLIENTE QUE ESTÁBAMOS EDITANDO, LIMPIAMOS EL FORMULARIO
+        if (editandoId === id) {
+          cancelarEdicion();
+        }
         fetchClientes();
       } else {
         showToast("No se pudo eliminar el cliente", "error");
