@@ -1,8 +1,8 @@
 from rest_framework import viewsets, status
 from rest_framework.response import Response
 from django.db import transaction
-from .models import Producto, Venta, DetalleVenta, GlobalConfig
-from .serializers import ProductoSerializer, VentaSerializer, GlobalConfigSerializer
+from .models import Producto, Venta, DetalleVenta, GlobalConfig, Cliente
+from .serializers import ProductoSerializer, VentaSerializer, GlobalConfigSerializer, ClienteSerializer
 from django.contrib.auth import authenticate
 from rest_framework.views import APIView
 
@@ -22,6 +22,11 @@ class LoginView(APIView):
             }, status=status.HTTP_200_OK)
         else:
             return Response({'error': 'Credenciales incorrectas'}, status=status.HTTP_401_UNAUTHORIZED)
+
+# Vista para la gestión de clientes
+class ClienteViewSet(viewsets.ModelViewSet):
+    queryset = Cliente.objects.all().order_by('nombre')
+    serializer_class = ClienteSerializer
 
 # Vista para el catálogo de productos
 class ProductoViewSet(viewsets.ModelViewSet):
