@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Producto, Venta, DetalleVenta, GlobalConfig, Cliente, Abono
+from .models import Producto, Venta, DetalleVenta, GlobalConfig, Cliente, Abono, AuditLog
 from django.db.models import Sum
 
 class AbonoSerializer(serializers.ModelSerializer):
@@ -79,3 +79,8 @@ class GlobalConfigSerializer(serializers.ModelSerializer):
     class Meta:
         model = GlobalConfig
         fields = ['nombre_negocio', 'iva_porcentaje', 'direccion', 'last_backup']
+
+class AuditLogSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = AuditLog
+        fields = '__all__'

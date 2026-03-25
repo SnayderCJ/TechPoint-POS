@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { ShoppingCart, Search, Package, CheckCircle, Zap, Trash2, Sparkles, Cpu, Loader2, User, CreditCard, Banknote, RefreshCcw } from 'lucide-react';
 
-function PosPage({ isDarkMode, config, showToast }) { // 👈 Recibe showToast
+function PosPage({ isDarkMode, config, showToast, authFetch }) { // 👈 Recibe authFetch
   const [busqueda, setBusqueda] = useState(""); 
   const [productos, setProductos] = useState([]);
   const [clientes, setClientes] = useState([]);
@@ -16,7 +16,7 @@ function PosPage({ isDarkMode, config, showToast }) { // 👈 Recibe showToast
 
   const fetchProductos = async () => {
     try {
-      const response = await fetch('http://localhost:8000/api/productos/');
+      const response = await authFetch('http://localhost:8000/api/productos/');
       const data = await response.json();
       setProductos(data);
     } catch (err) { console.error(err); } 
@@ -24,7 +24,7 @@ function PosPage({ isDarkMode, config, showToast }) { // 👈 Recibe showToast
 
   const fetchClientes = async () => {
     try {
-      const response = await fetch('http://localhost:8000/api/clientes/');
+      const response = await authFetch('http://localhost:8000/api/clientes/');
       const data = await response.json();
       setClientes(data);
     } catch (err) { console.error(err); }
@@ -42,7 +42,7 @@ function PosPage({ isDarkMode, config, showToast }) { // 👈 Recibe showToast
   const agregarAlCarrito = (producto) => {
     const enCarrito = carrito.filter(p => p.id === producto.id).length;
     if (enCarrito >= producto.stock) {
-      showToast("Stock insuficiente en inventario", "error"); // 👈 Cambio
+      showToast("Stock insuficiente en inventario", "error"); 
       return;
     }
     setCarrito([...carrito, producto]);
@@ -68,9 +68,8 @@ function PosPage({ isDarkMode, config, showToast }) { // 👈 Recibe showToast
     }));
 
     try {
-      const response = await fetch('http://localhost:8000/api/ventas/', {
+      const response = await authFetch('http://localhost:8000/api/ventas/', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           total: totalConIva, 
           items,
@@ -82,13 +81,13 @@ function PosPage({ isDarkMode, config, showToast }) { // 👈 Recibe showToast
       const resData = await response.json();
 
       if (response.ok) {
-        await fetchProductos();
+        await Promise.all([fetchProductos(), fetchClientes()]); // 👈 Refrescamos ambos
         setCarrito([]);
         setClienteSeleccionado(null);
         setMetodoPago("EFECTIVO");
         setShowModal(true);
       } else {
-        showToast(resData.error || "Error en la transacción", "error"); // 👈 Cambio
+        showToast(resData.error || "Error en la transacción", "error");
       }
     } catch (err) { 
       showToast("Error de enlace con el servidor", "error"); 
@@ -185,7 +184,7 @@ function PosPage({ isDarkMode, config, showToast }) { // 👈 Recibe showToast
                     {prod.categoria}
                   </span>
                   <span className={`text-[10px] font-bold uppercase ${
-                    prod.stock <= 3 ? "text-red-500 animate-pulse" : "text-slate-500"
+                    prod.stock <= prod.stock_minimo ? "text-red-500 animate-pulse" : "text-slate-500"
                   }`}>
                     Stock: {prod.stock}
                   </span>
@@ -294,7 +293,7 @@ function PosPage({ isDarkMode, config, showToast }) { // 👈 Recibe showToast
                   </div>
                   <div className="w-full h-1.5 bg-slate-200 dark:bg-slate-900 rounded-full mt-2 overflow-hidden">
                     <div 
-                      className="h-full bg-violet-500 transition-all duration-1000" 
+                      className="h-full bg-violet-500" 
                       style={{ width: `${Math.min(100, (clienteSeleccionado.cupo_disponible / clienteSeleccionado.cupo_credito) * 100)}%` }}
                     ></div>
                   </div>

@@ -1,177 +1,139 @@
-from rest_framework import viewsets, status
+from rest_framework import viewsets, status, permissions
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from django.db import transaction
+from django.db.models import Sum
 import decimal
-from .models import Producto, Venta, DetalleVenta, GlobalConfig, Cliente, Abono
-from .serializers import ProductoSerializer, VentaSerializer, GlobalConfigSerializer, ClienteSerializer, AbonoSerializer
+from .models import Producto, Venta, DetalleVenta, GlobalConfig, Cliente, Abono, AuditLog
+from .serializers import ProductoSerializer, VentaSerializer, GlobalConfigSerializer, ClienteSerializer, AbonoSerializer, AuditLogSerializer
 from django.contrib.auth import authenticate
 from rest_framework.views import APIView
+from django.http import HttpResponse
+from rest_framework_simplejwt.tokens import RefreshToken
+import subprocess
+import datetime
+
+class IsAdminUser(permissions.BasePermission):
+    def has_permission(self, request, view):
+        return bool(request.user and request.user.is_superuser)
 
 class LoginView(APIView):
+    permission_classes = [permissions.AllowAny]
     def post(self, request):
         username = request.data.get('username')
         password = request.data.get('password')
-        
-        # authenticate verifica contra la tabla auth_user de PostgreSQL
         user = authenticate(username=username, password=password)
-        
         if user is not None:
+            refresh = RefreshToken.for_user(user)
+            AuditLog.objects.create(usuario=user.username, accion='LOGIN', descripcion=f"Sesión iniciada")
             return Response({
+                'token': str(refresh.access_token),
                 'name': user.first_name if user.first_name else user.username,
                 'role': 'admin' if user.is_superuser else 'cashier',
                 'institution': 'UNEMI • TechPoint'
             }, status=status.HTTP_200_OK)
-        else:
-            return Response({'error': 'Credenciales incorrectas'}, status=status.HTTP_401_UNAUTHORIZED)
+        return Response({'error': 'Credenciales incorrectas'}, status=status.HTTP_401_UNAUTHORIZED)
 
-# Vista para la gestión de abonos
+class BackupView(APIView):
+    permission_classes = [IsAdminUser]
+    def get(self, request):
+        AuditLog.objects.create(usuario=request.user.username, accion='BACKUP', descripcion="Respaldo DB")
+        filename = f"backup_{datetime.datetime.now().strftime('%Y%m%d')}.sql"
+        try:
+            cmd = f"pg_dump -h db -U snayder pos_db"
+            result = subprocess.check_output(cmd, shell=True, env={'PGPASSWORD': '123'})
+            return HttpResponse(result, content_type='application/sql', headers={'Content-Disposition': f'attachment; filename="{filename}"'})
+        except Exception as e: return Response({'error': str(e)}, status=500)
+
+class AuditLogViewSet(viewsets.ReadOnlyModelViewSet):
+    permission_classes = [IsAdminUser]
+    queryset = AuditLog.objects.all().order_by('-fecha')
+    serializer_class = AuditLogSerializer
+
 class AbonoViewSet(viewsets.ModelViewSet):
     queryset = Abono.objects.all().order_by('-fecha')
     serializer_class = AbonoSerializer
 
-# Vista para la gestión de clientes
 class ClienteViewSet(viewsets.ModelViewSet):
     queryset = Cliente.objects.all().order_by('nombre')
     serializer_class = ClienteSerializer
 
     @action(detail=True, methods=['get'])
     def estado_cuenta(self, request, pk=None):
-        """
-        Genera un historial cronológico de ventas y abonos del cliente.
-        """
         cliente = self.get_object()
-        
-        # 1. Obtener Ventas a Crédito
-        ventas = Venta.objects.filter(cliente=cliente, metodo_pago='CREDITO').values(
-            'id', 'fecha', 'total', 'saldo_pendiente'
-        )
-        
-        # 2. Obtener Abonos
-        abonos = Abono.objects.filter(venta__cliente=cliente).values(
-            'id', 'fecha', 'monto', 'venta_id', 'metodo_pago'
-        )
-        
-        # 3. Unificar Movimientos
+        ventas = Venta.objects.filter(cliente=cliente, metodo_pago='CREDITO')
+        abonos = Abono.objects.filter(venta__cliente=cliente)
+        deuda = ventas.aggregate(Sum('saldo_pendiente'))['saldo_pendiente__sum'] or 0
         movimientos = []
-        for v in ventas:
-            movimientos.append({
-                'tipo': 'CONSUMO',
-                'id': v['id'],
-                'fecha': v['fecha'],
-                'monto': v['total'],
-                'descripcion': f"Venta a Crédito #{v['id']}"
-            })
-            
-        for a in abonos:
-            movimientos.append({
-                'tipo': 'ABONO',
-                'id': a['id'],
-                'fecha': a['fecha'],
-                'monto': a['monto'],
-                'descripcion': f"Abono a Venta #{a['venta_id']} ({a['metodo_pago']})"
-            })
-            
-        # Ordenar por fecha (más reciente primero)
+        for v in ventas: movimientos.append({'tipo': 'CONSUMO', 'monto': v.total, 'fecha': v.fecha, 'descripcion': f"Venta #{v.id}"})
+        for a in abonos: movimientos.append({'tipo': 'ABONO', 'monto': a.monto, 'fecha': a.fecha, 'descripcion': f"Pago Venta #{a.venta.id}"})
         movimientos.sort(key=lambda x: x['fecha'], reverse=True)
-        
-        deuda_total = sum(v['saldo_pendiente'] for v in ventas)
-        
         return Response({
-            'cliente': cliente.nombre,
-            'identificacion': cliente.identificacion,
-            'cupo_credito': cliente.cupo_credito,
-            'deuda_total': deuda_total,
-            'cupo_disponible': cliente.cupo_credito - deuda_total,
+            'cliente': cliente.nombre, 
+            'deuda_total': deuda, 
+            'cupo_disponible': cliente.cupo_credito - deuda,
             'movimientos': movimientos
         })
 
-# Vista para el catálogo de productos
 class ProductoViewSet(viewsets.ModelViewSet):
     queryset = Producto.objects.all()
     serializer_class = ProductoSerializer
+    def get_permissions(self):
+        if self.action in ['create', 'update', 'partial_update', 'destroy']: return [IsAdminUser()]
+        return [permissions.IsAuthenticated()]
 
-# Vista para las ventas (Historial y Creación)
-class VentaViewSet(viewsets.ModelViewSet): # Cambiado a ModelViewSet para soportar GET
-    queryset = Venta.objects.all().order_by('-fecha') # Ordenar por las más recientes
+class VentaViewSet(viewsets.ModelViewSet):
+    queryset = Venta.objects.all().order_by('-fecha')
     serializer_class = VentaSerializer
 
     def create(self, request):
-        """
-        Lógica personalizada para procesar ventas, descontar stock y validar crédito.
-        """
         items = request.data.get('items', [])
-        total_venta = request.data.get('total')
+        total_venta = decimal.Decimal(str(request.data.get('total', 0)))
         cliente_id = request.data.get('cliente')
-        metodo_pago = request.data.get('metodo_pago', 'EFECTIVO') # Nuevo campo del frontend
-
-        if not items:
-            return Response({'error': 'No hay productos en la venta'}, status=status.HTTP_400_BAD_REQUEST)
+        metodo_pago = request.data.get('metodo_pago', 'EFECTIVO')
 
         try:
             with transaction.atomic():
-                # 1. Buscar cliente si existe
                 cliente = None
                 if cliente_id:
+                    # Bloqueamos el registro del cliente para evitar colisiones de crédito
                     cliente = Cliente.objects.select_for_update().get(id=cliente_id)
 
-                # 2. VALIDACIÓN DE CRÉDITO (RF 2.2)
+                # 🛡️ REFUERZO DE VALIDACIÓN DE CRÉDITO (RNF 4.1)
                 if metodo_pago == 'CREDITO':
                     if not cliente:
-                        raise Exception("Se requiere un cliente registrado para ventas a crédito.")
+                        return Response({'error': 'Venta a crédito requiere un cliente seleccionado.'}, status=400)
                     
-                    # Calcular deuda actual: Suma de todos los saldos pendientes del cliente
-                    deuda_actual = sum(v.saldo_pendiente for v in Venta.objects.filter(cliente=cliente))
-                    nuevo_total_deuda = deuda_actual + decimal.Decimal(str(total_venta))
+                    # Suma de deuda actual DIRECTO en la base de datos para máxima precisión
+                    deuda_actual = Venta.objects.filter(cliente=cliente).aggregate(Sum('saldo_pendiente'))['saldo_pendiente__sum'] or 0
+                    cupo_disponible = cliente.cupo_credito - deuda_actual
                     
-                    if nuevo_total_deuda > cliente.cupo_credito:
-                        cupo_disponible = cliente.cupo_credito - deuda_actual
-                        raise Exception(f"Cupo excedido. Disponible: ${cupo_disponible:.2f}. Total deuda si se aprueba: ${nuevo_total_deuda:.2f}")
+                    if total_venta > cupo_disponible:
+                        return Response({
+                            'error': f'Crédito insuficiente. Disponible: ${cupo_disponible:.2f}, Intento de compra: ${total_venta:.2f}'
+                        }, status=400)
 
-                # 3. Crear el registro principal con el método de pago
-                nueva_venta = Venta.objects.create(
-                    total=total_venta, 
-                    cliente=cliente, 
-                    metodo_pago=metodo_pago
-                )
+                # Crear Venta
+                nueva_venta = Venta.objects.create(total=total_venta, cliente=cliente, metodo_pago=metodo_pago)
 
                 for item in items:
-                    # select_for_update previene errores si dos cajeros venden lo mismo al mismo tiempo
                     producto = Producto.objects.select_for_update().get(id=item['id'])
-                    cantidad_vendida = item.get('cantidad', 1)
-
-                    # 2. Validar Stock
-                    if producto.stock < cantidad_vendida:
-                        raise Exception(f"Stock insuficiente para {producto.nombre}.")
-
-                    # 3. Descontar Stock
-                    producto.stock -= cantidad_vendida
+                    cant = item.get('cantidad', 1)
+                    if producto.stock < cant: raise Exception(f"Sin stock para {producto.nombre}")
+                    producto.stock -= cant
                     producto.save()
+                    DetalleVenta.objects.create(venta=nueva_venta, producto=producto, cantidad=cant, precio_unitario=producto.precio, costo_unitario=producto.precio_compra)
 
-                    # 4. Crear Detalle con Costo Histórico
-                    DetalleVenta.objects.create(
-                        venta=nueva_venta,
-                        producto=producto,
-                        cantidad=cantidad_vendida,
-                        precio_unitario=producto.precio,
-                        costo_unitario=producto.precio_compra # 👈 Capturamos el costo actual
-                    )
-
-            # Devolvemos la venta serializada para que el frontend pueda mostrarla de inmediato
-            serializer = self.get_serializer(nueva_venta)
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        
-        except Producto.DoesNotExist:
-            return Response({'error': 'Producto no encontrado'}, status=status.HTTP_404_NOT_FOUND)
+            return Response(self.get_serializer(nueva_venta).data, status=201)
         except Exception as e:
-            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'error': str(e)}, status=400)
 
 class ConfigView(APIView):
     def get(self, request):
         config, _ = GlobalConfig.objects.get_or_create(pk=1)
         return Response(GlobalConfigSerializer(config).data)
-
     def post(self, request):
+        if not request.user.is_superuser: return Response({'error': 'No autorizado'}, status=403)
         config = GlobalConfig.objects.get(pk=1)
         serializer = GlobalConfigSerializer(config, data=request.data, partial=True)
         if serializer.is_valid():

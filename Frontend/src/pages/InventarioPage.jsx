@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { PackagePlus, Package, Search, Trash2, Edit3, CheckCircle, AlertCircle, X, Loader2, Image as ImageIcon, BarChart3 } from 'lucide-react';
 
-function InventarioPage({ isDarkMode, showToast }) {
+function InventarioPage({ isDarkMode, showToast, authFetch }) { // 👈 Recibe authFetch
   const [productos, setProductos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [busqueda, setBusqueda] = useState("");
@@ -21,7 +21,7 @@ function InventarioPage({ isDarkMode, showToast }) {
 
   const fetchProductos = async () => {
     try {
-      const response = await fetch('http://localhost:8000/api/productos/');
+      const response = await authFetch('http://localhost:8000/api/productos/');
       const data = await response.json();
       setProductos(Array.isArray(data) ? data : []);
     } catch (err) {
@@ -78,7 +78,17 @@ function InventarioPage({ isDarkMode, showToast }) {
     const method = editandoId ? 'PATCH' : 'POST';
 
     try {
-      const response = await fetch(url, { method, body: data });
+      // Nota: authFetch maneja el Content-Type: application/json por defecto.
+      // Para FormData, debemos dejar que el navegador ponga el boundary correcto.
+      const techpointUser = JSON.parse(localStorage.getItem('techpoint_user'));
+      const response = await fetch(url, { 
+        method, 
+        body: data,
+        headers: {
+          'Authorization': `Bearer ${techpointUser?.token}`
+        }
+      });
+
       if (response.ok) {
         showToast(editandoId ? "Producto actualizado" : "Producto registrado");
         cancelarEdicion();
@@ -94,7 +104,7 @@ function InventarioPage({ isDarkMode, showToast }) {
 
   const eliminarProducto = async (id) => {
     try {
-      const response = await fetch(`http://localhost:8000/api/productos/${id}/`, { method: 'DELETE' });
+      const response = await authFetch(`http://localhost:8000/api/productos/${id}/`, { method: 'DELETE' });
       if (response.ok) {
         showToast("Producto eliminado del stock");
         if (editandoId === id) cancelarEdicion();
@@ -226,7 +236,7 @@ function InventarioPage({ isDarkMode, showToast }) {
 
       {confirmDelete && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/90 backdrop-blur-xl p-6">
-          <div className={`w-full max-w-sm rounded-[3rem] p-10 border text-center animate-in zoom-in duration-300 ${isDarkMode ? "bg-slate-900 border-white/10 shadow-2xl" : "bg-white border-slate-200 shadow-2xl"}`}>
+          <div className={`w-full max-w-sm rounded-[3rem] p-10 border text-center animate-in zoom-in duration-300 ${isDarkMode ? "bg-slate-900 border-white/10 shadow-2xl" : "bg-white border-slate-200 shadow-xl shadow-slate-200"}`}>
             <div className="w-20 h-20 bg-red-500/20 text-red-500 rounded-full flex items-center justify-center mx-auto mb-6">
               <Trash2 size={40} />
             </div>

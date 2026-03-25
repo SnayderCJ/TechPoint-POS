@@ -1,282 +1,184 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { 
-  FileText, ArrowUpRight, Activity, BarChart3, X, 
-  TrendingUp, Cpu, Download, Loader2, Search, Calendar 
-} from 'lucide-react';
-import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
+import { useState, useEffect } from 'react';
+import { History, Search, Calendar, FileText, Filter, RefreshCcw, ArrowRight, User, Package, DollarSign, CreditCard } from 'lucide-react';
 
-const HistorialPage = ({ isDarkMode }) => {
+function HistorialPage({ isDarkMode, config, showToast, authFetch }) { // 👈 Recibe authFetch
   const [ventas, setVentas] = useState([]);
-  const [config, setConfig] = useState(null);
-  const [searchTerm, setSearchTerm] = useState("");
   const [loading, setLoading] = useState(true);
-  const [selectedVenta, setSelectedVenta] = useState(null);
-  const [showDetail, setShowDetail] = useState(false);
-  const [isGenerating, setIsGenerating] = useState(false);
+  const [busqueda, setBusqueda] = useState("");
+  const [ventaDetalle, setVentaDetalle] = useState(null);
 
-  useEffect(() => {
-    // Carga de datos en paralelo desde el servidor de Milagro
-    const fetchData = async () => {
-      try {
-        const [ventasRes, configRes] = await Promise.all([
-          fetch('http://localhost:8000/api/ventas/'),
-          fetch('http://localhost:8000/api/config/')
-        ]);
-        
-        const ventasData = await ventasRes.json();
-        const configData = await configRes.json();
-        
-        setVentas(ventasData);
-        setConfig(configData);
-      } catch (err) {
-        console.error("Error de sincronización:", err);
-      } finally {
-        setLoading(false);
-      }
-    };
+  const ivaPorcentaje = parseFloat(config?.iva_porcentaje || 15);
 
-    fetchData();
-  }, []);
-
-  // --- BUSCADOR DINÁMICO (Filtra por ID de Factura o Nombre de Producto) ---
-  const ventasFiltradas = useMemo(() => {
-    return ventas.filter(venta => {
-      const term = searchTerm.toLowerCase();
-      const idStr = `TX-${venta.id.toString().padStart(4, '0')}`.toLowerCase();
-      const productMatch = venta.items?.some(item => 
-        item.nombre?.toLowerCase().includes(term)
-      );
-      return idStr.includes(term) || productMatch;
-    });
-  }, [ventas, searchTerm]);
-
-  // --- MÉTRICAS DE RENDIMIENTO ---
-  const metrics = useMemo(() => {
-    const total = ventas.reduce((acc, v) => acc + parseFloat(v.total), 0);
-    const last7Days = [...Array(7)].map((_, i) => {
-      const d = new Date();
-      d.setDate(d.getDate() - i);
-      const dateStr = d.toISOString().split('T')[0];
-      const dayTotal = ventas
-        .filter(v => v.fecha && v.fecha.startsWith(dateStr))
-        .reduce((acc, v) => acc + parseFloat(v.total), 0);
-      return { label: d.toLocaleDateString('es-EC', { weekday: 'short' }), total: dayTotal };
-    }).reverse();
-    const maxVal = Math.max(...last7Days.map(d => d.total), 100);
-    return { total, last7Days, maxVal };
-  }, [ventas]);
-
-  // --- GENERADOR DE PDF DINÁMICO (Usa Viamatica e IVA configurado) ---
-  const generatePDF = (venta) => {
-    setIsGenerating(true);
+  const fetchVentas = async () => {
     try {
-      const doc = new jsPDF();
-      const invoiceNo = `TX-${venta.id.toString().padStart(4, '0')}`;
-      
-      // Variables dinámicas desde Ajustes
-      const nombreEmpresa = config?.nombre_negocio || "TechPoint POS";
-      const ivaPorcentaje = parseFloat(config?.iva_porcentaje || 15);
-      const subtotalVal = (parseFloat(venta.total) / (1 + (ivaPorcentaje / 100))).toFixed(2);
-      const ivaVal = (parseFloat(venta.total) - subtotalVal).toFixed(2);
-
-      // Identidad Corporativa
-      doc.setFontSize(22);
-      doc.setTextColor(124, 58, 237);
-      doc.setFont(undefined, 'bold');
-      doc.text(nombreEmpresa, 14, 25);
-      
-      doc.setFontSize(10);
-      doc.setTextColor(100);
-      doc.setFont(undefined, 'normal');
-      doc.text("Soluciones Tecnológicas & Hardware", 14, 32);
-      doc.text(`${config?.direccion || "Milagro, Ecuador"} | Auditoría: Snayder Cedeño - UNEMI`, 14, 37);
-
-      doc.setDrawColor(200);
-      doc.roundedRect(120, 15, 75, 25, 3, 3);
-      doc.setTextColor(0);
-      doc.text(`FACTURA NO: ${invoiceNo}`, 125, 25);
-      doc.text(`Fecha: ${new Date(venta.fecha).toLocaleDateString()}`, 125, 33);
-
-      // Tabla de ítems
-      const colWidths = [20, 92, 35, 35];
-      const tableRows = (venta.items || []).map(item => [
-        item.cantidad,
-        item.nombre || `Producto SKU-${item.id}`,
-        `$${parseFloat(item.precio || 0).toFixed(2)}`,
-        `$${(item.cantidad * (item.precio || 0)).toFixed(2)}`
-      ]);
-
-      autoTable(doc, {
-        startY: 50,
-        head: [["Cant.", "Descripción", "P. Unitario", "Subtotal"]],
-        body: tableRows,
-        theme: 'grid',
-        headStyles: { fillColor: [124, 58, 237], halign: 'center' },
-        columnStyles: {
-          0: { halign: 'center', cellWidth: colWidths[0] },
-          1: { cellWidth: colWidths[1] },
-          2: { halign: 'right', cellWidth: colWidths[2] },
-          3: { halign: 'right', cellWidth: colWidths[3] }
-        }
-      });
-
-      // Tabla de Totales Alineada
-      autoTable(doc, {
-        startY: doc.lastAutoTable.finalY,
-        body: [
-          ['', '', 'SUBTOTAL:', `$${subtotalVal}`],
-          ['', '', `IVA (${ivaPorcentaje}%):`, `$${ivaVal}`],
-          ['', '', 'TOTAL PAGADO:', `$${parseFloat(venta.total).toFixed(2)}`]
-        ],
-        theme: 'plain',
-        styles: { fontSize: 10, cellPadding: 2 },
-        columnStyles: {
-          0: { cellWidth: colWidths[0] },
-          1: { cellWidth: colWidths[1] },
-          2: { halign: 'right', cellWidth: colWidths[2], fontStyle: 'bold' },
-          3: { halign: 'right', cellWidth: colWidths[3], fontStyle: 'bold' }
-        },
-        didParseCell: (data) => {
-          if (data.row.index === 2) { 
-            data.cell.styles.fontSize = 14;
-            data.cell.styles.textColor = [0, 0, 0];
-          }
-        }
-      });
-
-      doc.save(`Factura_${invoiceNo}.pdf`);
+      const response = await authFetch('http://localhost:8000/api/ventas/');
+      const data = await response.json();
+      setVentas(data);
     } catch (err) { console.error(err); } 
-    finally { setIsGenerating(false); }
+    finally { setLoading(false); }
   };
 
+  useEffect(() => { fetchVentas(); }, []);
+
+  const ventasFiltradas = ventas.filter(v => 
+    v.id.toString().includes(busqueda) || 
+    (v.cliente_nombre && v.cliente_nombre.toLowerCase().includes(busqueda.toLowerCase()))
+  );
+
   return (
-    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-6 duration-700 pb-20">
+    <div className="flex flex-col space-y-10 animate-in fade-in slide-in-from-top-4 duration-700 pb-20">
       
-      {/* --- KPIs --- */}
-      <div className="flex flex-col xl:flex-row justify-between items-start gap-6">
+      {/* HEADER */}
+      <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
         <div>
-          <h2 className={`text-4xl font-black tracking-tighter flex items-center gap-4 ${isDarkMode ? "text-white" : "text-slate-900"}`}>
-            <BarChart3 className="text-violet-500" size={40} />
-            Auditoría de <span className="text-violet-600">Ventas</span>
-          </h2>
-          <p className="text-slate-500 font-bold uppercase tracking-widest text-[10px] mt-2 ml-1">
-             {config?.nombre_negocio || "Cargando..."} • Milagro • UNEMI
+          <h1 className={`text-4xl font-black tracking-tight ${isDarkMode ? "text-white" : "text-slate-900"}`}>
+            Historial de <span className="text-violet-600">Transacciones</span>
+          </h1>
+          <p className="text-slate-500 font-bold uppercase tracking-widest text-[10px] mt-2">
+            Registro Central de PostgreSQL • Milagro
           </p>
         </div>
-
-        <div className={`px-8 py-5 rounded-[2.5rem] border flex items-center gap-6 shadow-xl ${isDarkMode ? "bg-slate-900 border-white/5" : "bg-white border-slate-200"}`}>
-          <div className="p-3 rounded-2xl bg-violet-500/10 text-violet-500"><Activity size={24} /></div>
-          <div>
-            <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Monto Acumulado</p>
-            <p className={`text-3xl font-black ${isDarkMode ? "text-white" : "text-slate-900"}`}>
-              ${metrics.total.toLocaleString('es-EC', { minimumFractionDigits: 2 })}
-            </p>
+        <div className="flex items-center gap-4">
+          <div className={`p-4 rounded-2xl border flex items-center gap-3 ${isDarkMode ? "bg-slate-900/50 border-white/5" : "bg-white border-slate-200 shadow-sm"}`}>
+            <Calendar className="text-violet-500" size={18} />
+            <span className="text-xs font-black uppercase tracking-widest">{new Date().toLocaleDateString()}</span>
           </div>
+          <button onClick={fetchVentas} className="p-4 rounded-2xl bg-violet-600/10 text-violet-500 hover:bg-violet-600 hover:text-white transition-all active:scale-90">
+            <RefreshCcw size={20} />
+          </button>
         </div>
-      </div>
+      </header>
 
-      {/* --- Gráfica Dinámica --- */}
-      <div className={`p-8 md:p-10 rounded-[3rem] border ${isDarkMode ? "bg-slate-900/60 border-white/10" : "bg-white border-slate-200 shadow-lg"}`}>
-        <div className="h-40 flex items-end justify-between gap-4">
-          {metrics.last7Days.map((day, i) => (
-            <div key={i} className="flex-1 flex flex-col items-center group h-full justify-end">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
+        
+        {/* LISTADO DE VENTAS */}
+        <div className="lg:col-span-2 space-y-6">
+          <div className={`p-6 rounded-3xl border flex items-center gap-4 transition-all ${isDarkMode ? "bg-slate-900/40 border-white/5" : "bg-white border-slate-200 shadow-sm"}`}>
+            <Search className="text-slate-400" size={20} />
+            <input 
+              type="text" placeholder="Buscar por ID de venta o cliente..." 
+              className={`w-full bg-transparent outline-none font-bold text-sm ${isDarkMode ? "text-white" : "text-slate-900"}`}
+              value={busqueda} onChange={(e) => setBusqueda(e.target.value)}
+            />
+          </div>
+
+          <div className="space-y-4">
+            {loading ? (
+              <div className="p-20 text-center animate-pulse font-black text-xs uppercase tracking-[0.2em]">Sincronizando Registros...</div>
+            ) : ventasFiltradas.map(venta => (
               <div 
-                style={{ height: `${(day.total / metrics.maxVal) * 100}%`, minHeight: day.total > 0 ? '6px' : '2px' }} 
-                className={`w-full max-w-[50px] rounded-t-2xl transition-all duration-700 relative shadow-lg ${day.total > 0 ? "bg-gradient-to-t from-violet-600 to-indigo-500" : "bg-slate-200/10"}`}
-              />
-              <span className="text-[10px] font-black text-slate-500 mt-4 uppercase">{day.label}</span>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* --- Buscador SaaS --- */}
-      <div className={`p-4 rounded-[2rem] border flex items-center gap-4 transition-all ${isDarkMode ? "bg-slate-900/60 border-white/5" : "bg-white border-slate-200 shadow-sm"}`}>
-        <Search className="ml-4 text-slate-500" size={20} />
-        <input 
-          type="text"
-          placeholder="Buscar por ID o componentes (Ej: Ryzen, B550)..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className={`w-full bg-transparent border-none outline-none py-2 font-bold text-sm ${isDarkMode ? "text-white" : "text-slate-900"}`}
-        />
-      </div>
-
-      {/* --- Lista de Invoices --- */}
-      <div className="space-y-4 max-w-5xl">
-        {loading ? <div className="p-20 text-center animate-pulse font-black uppercase text-xs tracking-widest">Sincronizando PostgreSQL...</div> : 
-          ventasFiltradas.map((venta) => (
-            <div key={venta.id} onClick={() => { setSelectedVenta(venta); setShowDetail(true); }} className={`group p-6 rounded-[2.5rem] border transition-all flex justify-between items-center cursor-pointer ${isDarkMode ? "bg-slate-900/60 border-white/5 hover:border-violet-500/40" : "bg-white border-slate-200 hover:border-violet-300 shadow-sm"}`}>
-              <div className="flex items-center gap-6">
-                <div className={`p-4 rounded-2xl ${isDarkMode ? "bg-slate-950" : "bg-slate-50"}`}>
-                  <FileText size={24} className="text-slate-400 group-hover:text-violet-500" />
-                </div>
-                <div>
-                  <p className={`text-xl font-black ${isDarkMode ? "text-white" : "text-slate-800"}`}>Factura #TX-{venta.id.toString().padStart(4, '0')}</p>
-                  <p className="text-[10px] font-bold text-slate-500 uppercase">{new Date(venta.fecha).toLocaleDateString()} • {venta.items?.length || 0} Ítems</p>
-                </div>
-              </div>
-              <div className="text-right flex items-center gap-8">
-                <div><p className={`text-3xl font-black ${isDarkMode ? "text-white" : "text-slate-900"}`}>${parseFloat(venta.total).toFixed(2)}</p></div>
-                <ArrowUpRight size={22} className="text-slate-300" />
-              </div>
-            </div>
-          ))
-        }
-      </div>
-
-      {/* --- Modal Estilo Factura Real --- */}
-      {showDetail && selectedVenta && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/90 backdrop-blur-md p-6">
-          <div className={`w-full max-w-2xl rounded-[3rem] p-10 border shadow-2xl animate-in zoom-in-95 duration-300 ${isDarkMode ? "bg-slate-900 border-white/10" : "bg-white border-slate-200"}`}>
-            <div className="flex justify-between items-start mb-8 border-b border-dashed border-slate-700 pb-6">
-              <div>
-                <h3 className="text-3xl font-black uppercase tracking-tighter">{config?.nombre_negocio || "Comprobante"}</h3>
-                <p className="text-violet-500 font-bold uppercase text-xs">TX-{selectedVenta.id.toString().padStart(4, '0')}</p>
-              </div>
-              <div className="flex gap-2">
-                <button onClick={() => generatePDF(selectedVenta)} disabled={isGenerating} className="bg-violet-600 text-white px-5 py-3 rounded-2xl font-black text-[10px] uppercase flex items-center gap-2 active:scale-95 transition-all">
-                  {isGenerating ? <Loader2 className="animate-spin" size={14} /> : <Download size={14} />} PDF
-                </button>
-                <button onClick={() => setShowDetail(false)} className="text-slate-400 hover:text-red-500"><X size={28} /></button>
-              </div>
-            </div>
-
-            <div className="mb-8">
-              <div className={`grid grid-cols-4 gap-4 p-3 mb-2 rounded-xl text-[9px] font-black uppercase ${isDarkMode ? "bg-white/5 text-slate-400" : "bg-slate-50 text-slate-500"}`}>
-                <div className="col-span-2">Descripción</div>
-                <div className="text-center">Cant.</div>
-                <div className="text-right">Total</div>
-              </div>
-              <div className="space-y-2 max-h-[250px] overflow-y-auto pr-2 custom-scrollbar">
-                {selectedVenta.items?.map((item, idx) => (
-                  <div key={idx} className={`grid grid-cols-4 gap-4 p-4 rounded-2xl border ${isDarkMode ? "border-white/5 bg-slate-950/30" : "border-slate-100 bg-white"}`}>
-                    <div className="col-span-2 font-bold text-xs">{item.nombre || `Producto ${item.id}`}</div>
-                    <div className="text-center font-black text-violet-500">x{item.cantidad}</div>
-                    <div className="text-right font-black">${(item.cantidad * (item.precio || 0)).toFixed(2)}</div>
+                key={venta.id} 
+                onClick={() => setVentaDetalle(venta)}
+                className={`group p-6 rounded-[2.5rem] border cursor-pointer transition-all duration-300 flex flex-col md:flex-row justify-between items-center gap-6 ${
+                  ventaDetalle?.id === venta.id 
+                  ? (isDarkMode ? "bg-violet-600 border-violet-500 text-white" : "bg-violet-600 border-violet-600 text-white shadow-xl shadow-violet-200")
+                  : (isDarkMode ? "bg-slate-900/60 border-white/5 hover:border-violet-500/40" : "bg-white border-slate-100 hover:border-violet-400 shadow-md")
+                }`}
+              >
+                <div className="flex items-center gap-6 w-full">
+                  <div className={`w-14 h-14 rounded-2xl flex items-center justify-center shrink-0 transition-colors ${
+                    ventaDetalle?.id === venta.id ? "bg-white/20" : (isDarkMode ? "bg-slate-950 text-violet-400" : "bg-violet-50 text-violet-600")
+                  }`}>
+                    <FileText size={24} />
                   </div>
-                ))}
-              </div>
-            </div>
+                  <div className="overflow-hidden">
+                    <div className="flex items-center gap-3">
+                      <span className={`text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded ${ventaDetalle?.id === venta.id ? "bg-white/20 text-white" : "bg-slate-500/10 text-slate-500"}`}>Venta #{venta.id}</span>
+                      <span className={`text-[10px] font-black uppercase tracking-widest ${ventaDetalle?.id === venta.id ? "text-white/60" : "text-slate-400"}`}>
+                        {new Date(venta.fecha).toLocaleString()}
+                      </span>
+                    </div>
+                    <h3 className="font-black text-lg truncate mt-1">
+                      {venta.cliente_nombre || "Consumidor Final"}
+                    </h3>
+                  </div>
+                </div>
 
-            <div className="pt-6 border-t border-dashed border-slate-700 flex flex-col items-end">
-              <div className="w-full max-w-[200px] flex justify-between text-[10px] font-bold text-slate-500 uppercase mb-1">
-                <span>Subtotal:</span>
-                <span>${(parseFloat(selectedVenta.total) / (1 + (parseFloat(config?.iva_porcentaje || 15) / 100))).toFixed(2)}</span>
+                <div className="flex items-center gap-8 w-full md:w-auto justify-between">
+                  <div className="text-right">
+                    <p className={`text-[9px] font-black uppercase tracking-tighter ${ventaDetalle?.id === venta.id ? "text-white/60" : "text-slate-500"}`}>Total Liquidado</p>
+                    <p className="text-2xl font-black tracking-tighter">${parseFloat(venta.total).toFixed(2)}</p>
+                  </div>
+                  <ArrowRight size={20} className={`transition-transform duration-300 ${ventaDetalle?.id === venta.id ? "translate-x-2" : "text-slate-300 group-hover:text-violet-500"}`} />
+                </div>
               </div>
-              <div className="w-full max-w-[200px] flex justify-between text-[10px] font-bold text-violet-500 uppercase mb-4">
-                <span>IVA ({config?.iva_porcentaje || 15}%):</span>
-                <span>${(parseFloat(selectedVenta.total) - (parseFloat(selectedVenta.total) / (1 + (parseFloat(config?.iva_porcentaje || 15) / 100)))).toFixed(2)}</span>
-              </div>
-              <p className="text-6xl font-black tracking-tighter">${parseFloat(selectedVenta.total).toFixed(2)}</p>
-            </div>
+            ))}
           </div>
         </div>
-      )}
+
+        {/* DETALLE LATERAL */}
+        <aside className="relative">
+          <div className={`sticky top-8 p-8 rounded-[3.5rem] border min-h-[600px] transition-all flex flex-col ${
+            isDarkMode 
+            ? "bg-slate-900/80 backdrop-blur-xl border-white/10 shadow-2xl" 
+            : "bg-white border-slate-200 shadow-xl shadow-slate-300/50"
+          }`}>
+            {!ventaDetalle ? (
+              <div className="flex-1 flex flex-col items-center justify-center text-center opacity-20 grayscale">
+                <Filter size={80} className="mb-6" />
+                <p className="font-black uppercase tracking-[0.2em] text-xs">Selecciona un registro<br/>para ver el detalle</p>
+              </div>
+            ) : (
+              <div className="animate-in fade-in slide-in-from-right-4 duration-500 flex flex-col h-full">
+                <div className="flex justify-between items-start mb-8">
+                  <h2 className={`text-2xl font-black ${isDarkMode ? "text-white" : "text-slate-800"}`}>Recibo Digital</h2>
+                  <button onClick={() => setVentaDetalle(null)} className="p-2 hover:bg-slate-500/10 rounded-xl transition-colors"><X size={20}/></button>
+                </div>
+
+                <div className={`p-6 rounded-3xl mb-8 flex items-center gap-4 ${isDarkMode ? "bg-slate-950/50" : "bg-slate-50"}`}>
+                  <div className="p-3 rounded-2xl bg-violet-600 text-white shadow-lg"><User size={20}/></div>
+                  <div className="overflow-hidden">
+                    <p className="text-[10px] font-black uppercase text-slate-500">Cliente</p>
+                    <p className={`font-bold truncate ${isDarkMode ? "text-white" : "text-slate-900"}`}>{ventaDetalle.cliente_nombre || "Consumidor Final"}</p>
+                  </div>
+                </div>
+
+                <div className="flex-1 space-y-4 overflow-y-auto pr-2 custom-scrollbar">
+                  {ventaDetalle.items?.map((item, idx) => (
+                    <div key={idx} className={`p-4 rounded-2xl border flex justify-between items-center ${isDarkMode ? "bg-white/5 border-white/5" : "bg-white border-slate-100 shadow-sm"}`}>
+                      <div className="flex items-center gap-4">
+                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${isDarkMode ? "bg-slate-950" : "bg-slate-50"}`}>
+                          <Package size={18} className="text-violet-500" />
+                        </div>
+                        <div>
+                          <p className={`text-xs font-bold ${isDarkMode ? "text-white" : "text-slate-900"}`}>{item.nombre}</p>
+                          <p className="text-[10px] text-slate-500 font-bold uppercase">{item.cantidad} unidades</p>
+                        </div>
+                      </div>
+                      <p className="text-xs font-black text-violet-500">${parseFloat(item.precio).toFixed(2)}</p>
+                    </div>
+                  ))}
+                </div>
+
+                <div className={`mt-10 pt-8 border-t space-y-4 ${isDarkMode ? "border-white/10" : "border-slate-200"}`}>
+                  <div className="flex justify-between items-center px-2 text-slate-500 font-bold uppercase text-[10px] tracking-widest">
+                    <span>Subtotal (Sin IVA)</span>
+                    <span>${(parseFloat(ventaDetalle.total) / (1 + (ivaPorcentaje / 100))).toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between items-center px-2 text-slate-500 font-bold uppercase text-[10px] tracking-widest border-b pb-4 dark:border-white/5">
+                    <span>IVA Recaudado ({ivaPorcentaje}%)</span>
+                    <span>${(parseFloat(ventaDetalle.total) - (parseFloat(ventaDetalle.total) / (1 + (ivaPorcentaje / 100)))).toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between items-end p-2">
+                    <p className={`text-4xl font-black tracking-tighter ${isDarkMode ? "text-white" : "text-slate-950"}`}>
+                      ${parseFloat(ventaDetalle.total).toFixed(2)}
+                    </p>
+                    <div className="text-right">
+                      <p className="text-[10px] font-black text-violet-500 uppercase tracking-widest mb-1 flex items-center gap-2 justify-end">
+                        <DollarSign size={12}/> {ventaDetalle.metodo_pago || 'EFECTIVO'}
+                      </p>
+                      <p className="text-[9px] font-bold text-slate-400 uppercase tracking-tighter">Transacción Exitosa</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        </aside>
+      </div>
 
       <style>{`
-        .custom-scrollbar::-webkit-scrollbar { width: 5px; }
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
         .custom-scrollbar::-webkit-scrollbar-thumb { 
           background-color: ${isDarkMode ? "#1e1b4b" : "#cbd5e1"}; 
           border-radius: 10px; 
@@ -284,6 +186,8 @@ const HistorialPage = ({ isDarkMode }) => {
       `}</style>
     </div>
   );
-};
+}
+
+const X = ({ size }) => <RefreshCcw size={size} className="rotate-45" />; // Fallback icon
 
 export default HistorialPage;

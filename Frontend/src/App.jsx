@@ -26,13 +26,35 @@ function App() {
   const [config, setConfig] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
 
+  // 🔐 FUNCIÓN PARA PETICIONES AUTENTICADAS (RNF 4.1)
+  const authFetch = async (url, options = {}) => {
+    const techpointUser = JSON.parse(localStorage.getItem('techpoint_user'));
+    const token = techpointUser?.token;
+
+    const headers = {
+      ...options.headers,
+      'Authorization': token ? `Bearer ${token}` : '',
+      'Content-Type': 'application/json',
+    };
+
+    const response = await fetch(url, { ...options, headers });
+    
+    if (response.status === 401) {
+      // Si el token expiró o es inválido, cerramos sesión
+      logout();
+      showToast("Sesión expirada. Por favor, ingrese de nuevo.", "error");
+    }
+    
+    return response;
+  };
+
   useEffect(() => {
     localStorage.setItem('techpoint_theme', isDarkMode ? 'dark' : 'light');
   }, [isDarkMode]);
 
   useEffect(() => {
     if (user) {
-      fetch('http://localhost:8000/api/config/')
+      authFetch('http://localhost:8000/api/config/')
         .then(res => res.json())
         .then(data => {
           setConfig(data);
@@ -57,7 +79,7 @@ function App() {
       <div className={`h-screen w-full flex items-center justify-center ${isDarkMode ? "bg-slate-950 text-white" : "bg-white text-slate-900"}`}>
         <div className="flex flex-col items-center gap-4">
           <div className="w-12 h-12 border-4 border-violet-600 border-t-transparent rounded-full animate-spin"></div>
-          <p className="font-black text-xs uppercase tracking-[0.3em] animate-pulse">Sincronizando Core...</p>
+          <p className="font-black text-xs uppercase tracking-[0.3em] animate-pulse">Core Shield Active...</p>
         </div>
       </div>
     );
@@ -85,15 +107,15 @@ function App() {
           <main className="flex-1 min-h-screen overflow-y-auto p-4 md:p-8 custom-scrollbar">
             <div className="max-w-[1400px] mx-auto">
               <Routes>
-                <Route path="/" element={<PosPage isDarkMode={isDarkMode} config={config} showToast={showToast} />} />
-                <Route path="/clientes" element={<ClientesPage isDarkMode={isDarkMode} showToast={showToast} />} />
+                <Route path="/" element={<PosPage isDarkMode={isDarkMode} config={config} showToast={showToast} authFetch={authFetch} />} />
+                <Route path="/clientes" element={<ClientesPage isDarkMode={isDarkMode} showToast={showToast} authFetch={authFetch} />} />
 
                 {user.role === 'admin' ? (
                   <>
-                    <Route path="/bi" element={<BiPage isDarkMode={isDarkMode} showToast={showToast} />} />
-                    <Route path="/inventario" element={<InventarioPage isDarkMode={isDarkMode} showToast={showToast} />} />
-                    <Route path="/historial" element={<HistorialPage isDarkMode={isDarkMode} config={config} showToast={showToast} />} />
-                    <Route path="/ajustes" element={<AjustesPage isDarkMode={isDarkMode} showToast={showToast} />} />
+                    <Route path="/bi" element={<BiPage isDarkMode={isDarkMode} showToast={showToast} authFetch={authFetch} />} />
+                    <Route path="/inventario" element={<InventarioPage isDarkMode={isDarkMode} showToast={showToast} authFetch={authFetch} />} />
+                    <Route path="/historial" element={<HistorialPage isDarkMode={isDarkMode} config={config} showToast={showToast} authFetch={authFetch} />} />
+                    <Route path="/ajustes" element={<AjustesPage isDarkMode={isDarkMode} showToast={showToast} authFetch={authFetch} />} />
                   </>
                 ) : (
                   <>

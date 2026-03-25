@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { UserPlus, Users, Search, Trash2, Edit3, CheckCircle, AlertCircle, CreditCard, X, Receipt, ArrowRight, DollarSign, Printer, Download } from 'lucide-react';
 
-function ClientesPage({ isDarkMode, showToast }) {
+function ClientesPage({ isDarkMode, showToast, authFetch }) { // 👈 Recibe authFetch
   const [clientes, setClientes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [busqueda, setBusqueda] = useState("");
@@ -13,7 +13,7 @@ function ClientesPage({ isDarkMode, showToast }) {
   const [infoFinanciera, setInfoFinanciera] = useState(null);
   const [montoAbono, setMontoAbono] = useState("");
 
-  const [confirmDelete, setConfirmDelete] = useState(null); // Para el modal de borrado
+  const [confirmDelete, setConfirmDelete] = useState(null); 
 
   const [formData, setFormData] = useState({
     identificacion: '',
@@ -25,11 +25,10 @@ function ClientesPage({ isDarkMode, showToast }) {
   });
 
   const [error, setError] = useState("");
-  const [success, setSuccess] = useState(false);
 
   const fetchClientes = async () => {
     try {
-      const response = await fetch('http://localhost:8000/api/clientes/');
+      const response = await authFetch('http://localhost:8000/api/clientes/');
       const data = await response.json();
       setClientes(Array.isArray(data) ? data : []);
     } catch (err) { console.error(err); } 
@@ -38,12 +37,12 @@ function ClientesPage({ isDarkMode, showToast }) {
 
   const fetchEstadoCuenta = async (cliente) => {
     try {
-      const resVentas = await fetch('http://localhost:8000/api/ventas/');
+      const resVentas = await authFetch('http://localhost:8000/api/ventas/');
       const dataVentas = await resVentas.json();
       const pendientes = dataVentas.filter(v => v.cliente === cliente.id && parseFloat(v.saldo_pendiente) > 0);
       setVentasPendientes(pendientes);
 
-      const resMovimientos = await fetch(`http://localhost:8000/api/clientes/${cliente.id}/estado_cuenta/`);
+      const resMovimientos = await authFetch(`http://localhost:8000/api/clientes/${cliente.id}/estado_cuenta/`);
       const dataMovimientos = await resMovimientos.json();
       setMovimientos(dataMovimientos.movimientos);
       setInfoFinanciera(dataMovimientos);
@@ -85,9 +84,8 @@ function ClientesPage({ isDarkMode, showToast }) {
     const method = editandoId ? 'PUT' : 'POST';
 
     try {
-      const response = await fetch(url, {
+      const response = await authFetch(url, {
         method: method,
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData)
       });
       if (response.ok) {
@@ -104,9 +102,8 @@ function ClientesPage({ isDarkMode, showToast }) {
   const registrarAbono = async (ventaId) => {
     if (!montoAbono || parseFloat(montoAbono) <= 0) return showToast("Ingrese un monto válido", "error");
     try {
-      const response = await fetch('http://localhost:8000/api/abonos/', {
+      const response = await authFetch('http://localhost:8000/api/abonos/', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ venta: ventaId, monto: montoAbono, metodo_pago: 'EFECTIVO' })
       });
       if (response.ok) {
@@ -120,13 +117,10 @@ function ClientesPage({ isDarkMode, showToast }) {
 
   const eliminarCliente = async (id) => {
     try {
-      const response = await fetch(`http://localhost:8000/api/clientes/${id}/`, { method: 'DELETE' });
+      const response = await authFetch(`http://localhost:8000/api/clientes/${id}/`, { method: 'DELETE' });
       if (response.ok) {
         showToast("Cliente eliminado");
-        // SI ELIMINAMOS AL CLIENTE QUE ESTÁBAMOS EDITANDO, LIMPIAMOS EL FORMULARIO
-        if (editandoId === id) {
-          cancelarEdicion();
-        }
+        if (editandoId === id) cancelarEdicion();
         fetchClientes();
       } else {
         showToast("No se pudo eliminar el cliente", "error");
@@ -143,7 +137,6 @@ function ClientesPage({ isDarkMode, showToast }) {
   return (
     <div className="flex flex-col space-y-10 animate-in fade-in duration-700 pb-20">
       
-      {/* HEADER */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 print:hidden">
         <div>
           <h1 className={`text-4xl font-black tracking-tight ${isDarkMode ? "text-white" : "text-slate-900"}`}>
@@ -157,7 +150,6 @@ function ClientesPage({ isDarkMode, showToast }) {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
         
-        {/* FORMULARIO */}
         <div className={`lg:col-span-1 p-8 rounded-[2.5rem] border h-fit sticky top-8 print:hidden ${
           isDarkMode ? "bg-slate-900/50 border-white/10 shadow-2xl" : "bg-white border-slate-200 shadow-xl"
         }`}>
@@ -191,7 +183,6 @@ function ClientesPage({ isDarkMode, showToast }) {
           </form>
         </div>
 
-        {/* LISTADO Y ESTADO DE CUENTA */}
         <div className="lg:col-span-2 space-y-8">
           
           <div className={`p-6 rounded-3xl border flex items-center gap-4 transition-all print:hidden ${isDarkMode ? "bg-slate-900/40 border-white/5" : "bg-white border-slate-200 shadow-sm"}`}>
@@ -226,7 +217,7 @@ function ClientesPage({ isDarkMode, showToast }) {
                 </div>
                 <div className={`p-6 rounded-3xl border ${isDarkMode ? "bg-slate-950/50 border-white/5" : "bg-slate-50 border-slate-100"}`}>
                   <p className="text-[10px] font-black uppercase text-slate-500 mb-2">Cupo Disponible</p>
-                  <p className={`text-xl font-black ${isDarkMode ? "text-white" : "text-slate-900"}`}>${infoFinanciera?.cupo_disponible.toFixed(2)}</p>
+                  <p className={`text-xl font-black ${isDarkMode ? "text-white" : "text-slate-900"}`}>${infoFinanciera?.cupo_disponible?.toFixed(2) || "0.00"}</p>
                 </div>
               </div>
 
@@ -302,10 +293,9 @@ function ClientesPage({ isDarkMode, showToast }) {
         </div>
       </div>
 
-      {/* MODAL DE CONFIRMACIÓN DE BORRADO */}
       {confirmDelete && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/90 backdrop-blur-xl p-6">
-          <div className={`w-full max-w-sm rounded-[3rem] p-10 border text-center animate-in zoom-in duration-300 ${isDarkMode ? "bg-slate-900 border-white/10 shadow-2xl" : "bg-white border-slate-200 shadow-2xl"}`}>
+          <div className={`w-full max-w-sm rounded-[3rem] p-10 border text-center animate-in zoom-in duration-300 ${isDarkMode ? "bg-slate-900 border-white/10 shadow-2xl" : "bg-white border-slate-200 shadow-xl shadow-slate-200"}`}>
             <div className="w-20 h-20 bg-red-500/20 text-red-500 rounded-full flex items-center justify-center mx-auto mb-6">
               <Trash2 size={40} />
             </div>

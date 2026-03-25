@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
 import { Settings, Save, Shield, Database, Store, MapPin, Percent, RefreshCw } from 'lucide-react';
 
-function AjustesPage({ isDarkMode, showToast }) {
+function AjustesPage({ isDarkMode, showToast, authFetch }) { // 👈 Recibe authFetch
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [backingUp, setBackingUp] = useState(false);
   const [config, setConfig] = useState({
     nombre_negocio: '',
     iva_porcentaje: '',
@@ -11,7 +12,7 @@ function AjustesPage({ isDarkMode, showToast }) {
   });
 
   useEffect(() => {
-    fetch('http://localhost:8000/api/config/')
+    authFetch('http://localhost:8000/api/config/')
       .then(res => res.json())
       .then(data => {
         setConfig(data);
@@ -24,9 +25,8 @@ function AjustesPage({ isDarkMode, showToast }) {
     e.preventDefault();
     setSaving(true);
     try {
-      const response = await fetch('http://localhost:8000/api/config/', {
+      const response = await authFetch('http://localhost:8000/api/config/', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(config)
       });
       if (response.ok) {
@@ -41,11 +41,32 @@ function AjustesPage({ isDarkMode, showToast }) {
     }
   };
 
-  const handleBackup = () => {
-    showToast("Generando respaldo en PostgreSQL...", "success");
-    setTimeout(() => {
-      showToast("Respaldo de base de datos completado");
-    }, 2000);
+  const handleBackup = async () => {
+    setBackingUp(true);
+    showToast("Conectando con PostgreSQL para respaldo...", "success");
+    
+    try {
+      const response = await authFetch('http://localhost:8000/api/backup/');
+      
+      if (response.ok) {
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `respaldo_pos_${new Date().toISOString().split('T')[0]}.sql`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+        showToast("Respaldo descargado con éxito");
+      } else {
+        showToast("Error al generar el archivo de respaldo", "error");
+      }
+    } catch (err) {
+      showToast("Error de red al intentar respaldar", "error");
+    } finally {
+      setBackingUp(false);
+    }
   };
 
   if (loading) return <div className="p-20 text-center animate-pulse font-black text-xs uppercase tracking-widest">Cargando Core...</div>;
@@ -128,10 +149,17 @@ function AjustesPage({ isDarkMode, showToast }) {
             <p className="text-slate-500 text-xs font-bold leading-relaxed mb-8 uppercase tracking-wider">Genera un respaldo completo de la base de datos de PostgreSQL para migración o seguridad.</p>
             <button 
               onClick={handleBackup}
-              className="w-full border-2 border-dashed border-slate-300 dark:border-white/10 py-10 rounded-[2.5rem] flex flex-col items-center gap-4 hover:border-violet-500 hover:bg-violet-500/5 transition-all group"
+              disabled={backingUp}
+              className="w-full border-2 border-dashed border-slate-300 dark:border-white/10 py-10 rounded-[2.5rem] flex flex-col items-center gap-4 hover:border-violet-500 hover:bg-violet-500/5 transition-all group disabled:opacity-50"
             >
-              <Database className="text-slate-400 group-hover:text-violet-500 transition-colors" size={40} />
-              <span className="text-[10px] font-black uppercase tracking-widest text-slate-500 group-hover:text-violet-500 transition-colors">Exportar PostgreSQL (SQL)</span>
+              {backingUp ? (
+                <RefreshCw className="animate-spin text-violet-500" size={40} />
+              ) : (
+                <Database className="text-slate-400 group-hover:text-violet-500 transition-colors" size={40} />
+              )}
+              <span className="text-[10px] font-black uppercase tracking-widest text-slate-500 group-hover:text-violet-500 transition-colors">
+                {backingUp ? "Procesando PostgreSQL..." : "Exportar PostgreSQL (SQL)"}
+              </span>
             </button>
           </div>
         </section>
