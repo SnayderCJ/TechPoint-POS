@@ -4,7 +4,7 @@ from django.contrib.auth.models import User
 class Producto(models.Model):
     nombre = models.CharField(max_length=200)
     categoria = models.CharField(max_length=100)
-    precio = models.DecimalField(max_digits=10, decimal_places=2, verbose_name="Precio de Venta")
+    precio = models.DecimalField(max_digits=10, decimal_places=2, default=0.00, verbose_name="Precio de Venta")
     precio_compra = models.DecimalField(max_digits=10, decimal_places=2, default=0.00, verbose_name="Costo de Adquisición") # 👈 RF 3.2
     stock = models.PositiveIntegerField(default=0)
     stock_minimo = models.PositiveIntegerField(default=3) # 👈 RF 3.4
@@ -33,7 +33,7 @@ class Venta(models.Model):
         ('CREDITO', 'Crédito'),
     ]
     fecha = models.DateTimeField(auto_now_add=True)
-    total = models.DecimalField(max_digits=10, decimal_places=2)
+    total = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
     cliente = models.ForeignKey(Cliente, on_delete=models.SET_NULL, null=True, blank=True)
     metodo_pago = models.CharField(max_length=20, choices=METODOS_PAGO, default='EFECTIVO')
     saldo_pendiente = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
@@ -50,13 +50,13 @@ class DetalleVenta(models.Model):
     venta = models.ForeignKey(Venta, related_name='detalles', on_delete=models.CASCADE)
     producto = models.ForeignKey(Producto, on_delete=models.PROTECT)
     cantidad = models.PositiveIntegerField(default=1)
-    precio_unitario = models.DecimalField(max_digits=10, decimal_places=2) # Precio de venta
+    precio_unitario = models.DecimalField(max_digits=10, decimal_places=2, default=0.00) # Precio de venta
     costo_unitario = models.DecimalField(max_digits=10, decimal_places=2, default=0.00) # 👈 RF 3.2: Costo de compra histórico
 
 class Abono(models.Model):
     venta = models.ForeignKey(Venta, related_name='abonos', on_delete=models.CASCADE)
     fecha = models.DateTimeField(auto_now_add=True)
-    monto = models.DecimalField(max_digits=10, decimal_places=2)
+    monto = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
     metodo_pago = models.CharField(max_length=20, default='EFECTIVO')
     notas = models.TextField(blank=True, null=True)
 

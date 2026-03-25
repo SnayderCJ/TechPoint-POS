@@ -81,7 +81,7 @@ function HistorialPage({ isDarkMode, config, showToast, authFetch }) {
                   <div className={`w-12 h-12 md:w-14 md:h-14 rounded-xl md:rounded-2xl flex items-center justify-center shrink-0 transition-colors ${
                     ventaDetalle?.id === venta.id ? "bg-white/20" : (isDarkMode ? "bg-slate-950 text-violet-400" : "bg-violet-50 text-violet-600")
                   }`}>
-                    <FileText size={22} md:size={24} />
+                    <FileText size={24} />
                   </div>
                   <div className="overflow-hidden">
                     <div className="flex items-center gap-2 md:gap-3">

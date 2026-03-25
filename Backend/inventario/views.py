@@ -56,9 +56,25 @@ class AbonoViewSet(viewsets.ModelViewSet):
     queryset = Abono.objects.all().order_by('-fecha')
     serializer_class = AbonoSerializer
 
+    def perform_destroy(self, instance):
+        AuditLog.objects.create(
+            usuario=self.request.user.username,
+            accion='ELIMINACION',
+            descripcion=f"Eliminado Abono: ID {instance.id} de Venta #{instance.venta.id} por ${instance.monto}"
+        )
+        instance.delete()
+
 class ClienteViewSet(viewsets.ModelViewSet):
     queryset = Cliente.objects.all().order_by('nombre')
     serializer_class = ClienteSerializer
+
+    def perform_destroy(self, instance):
+        AuditLog.objects.create(
+            usuario=self.request.user.username,
+            accion='ELIMINACION',
+            descripcion=f"Eliminado Cliente: {instance.nombre} ({instance.identificacion})"
+        )
+        instance.delete()
 
     @action(detail=True, methods=['get'])
     def estado_cuenta(self, request, pk=None):
@@ -84,9 +100,25 @@ class ProductoViewSet(viewsets.ModelViewSet):
         if self.action in ['create', 'update', 'partial_update', 'destroy']: return [IsAdminUser()]
         return [permissions.IsAuthenticated()]
 
+    def perform_destroy(self, instance):
+        AuditLog.objects.create(
+            usuario=self.request.user.username,
+            accion='ELIMINACION',
+            descripcion=f"Eliminado Producto: {instance.nombre} ({instance.codigo_barras})"
+        )
+        instance.delete()
+
 class VentaViewSet(viewsets.ModelViewSet):
     queryset = Venta.objects.all().order_by('-fecha')
     serializer_class = VentaSerializer
+
+    def perform_destroy(self, instance):
+        AuditLog.objects.create(
+            usuario=self.request.user.username,
+            accion='ELIMINACION',
+            descripcion=f"Eliminada Venta: ID {instance.id} - Total: ${instance.total}"
+        )
+        instance.delete()
 
     def create(self, request):
         items = request.data.get('items', [])

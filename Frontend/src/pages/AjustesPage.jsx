@@ -132,7 +132,7 @@ function AjustesPage({ isDarkMode, showToast, authFetch }) {
             </div>
 
             <div className="space-y-2 border-t border-slate-200 dark:border-white/5 pt-6">
-              <label className="text-[10px] font-black uppercase text-violet-500 ml-2 tracking-widest">Email de Notificaciones Stock (RF 3.4)</label>
+              <label className="text-[10px] font-black uppercase text-violet-500 ml-2 tracking-widest">Email de Notificaciones </label>
               <div className="relative mt-2">
                 <Mail className="absolute left-5 top-4.5 text-slate-400" size={18} />
                 <input 
