@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
-import { ShoppingCart, Search, Package, CheckCircle, Zap, Trash2, Sparkles, Cpu, Loader2, User, CreditCard, Banknote, RefreshCcw } from 'lucide-react';
+import { ShoppingCart, Search, Package, CheckCircle, Zap, Trash2, Sparkles, Cpu, Loader2, User, CreditCard, Banknote, RefreshCcw, X } from 'lucide-react';
 
-function PosPage({ isDarkMode, config, showToast, authFetch }) { // 👈 Recibe authFetch
+function PosPage({ isDarkMode, config, showToast, authFetch }) { 
   const [busqueda, setBusqueda] = useState(""); 
   const [productos, setProductos] = useState([]);
   const [clientes, setClientes] = useState([]);
@@ -81,7 +81,7 @@ function PosPage({ isDarkMode, config, showToast, authFetch }) { // 👈 Recibe 
       const resData = await response.json();
 
       if (response.ok) {
-        await Promise.all([fetchProductos(), fetchClientes()]); // 👈 Refrescamos ambos
+        await Promise.all([fetchProductos(), fetchClientes()]); 
         setCarrito([]);
         setClienteSeleccionado(null);
         setMetodoPago("EFECTIVO");
@@ -100,35 +100,36 @@ function PosPage({ isDarkMode, config, showToast, authFetch }) { // 👈 Recibe 
   );
 
   return (
-    <div className="flex flex-col space-y-8 animate-in fade-in slide-in-from-top-4 duration-700 pb-20">
+    <div className="flex flex-col space-y-6 md:space-y-10 animate-in fade-in slide-in-from-top-4 duration-700 pb-20">
       
-      <header className={`relative transition-all duration-500 border p-8 md:p-12 rounded-[2.5rem] md:rounded-[3.5rem] shadow-2xl overflow-hidden shrink-0 ${
+      {/* HEADER ADAPTABLE */}
+      <header className={`relative transition-all duration-500 border p-6 md:p-10 rounded-[2rem] md:rounded-[3.5rem] shadow-2xl overflow-hidden shrink-0 ${
         isDarkMode 
           ? "bg-slate-900/80 backdrop-blur-xl border-white/10 shadow-black/40" 
           : "bg-white border-slate-200 shadow-slate-300/50"
       }`}>
-        {isDarkMode && <div className="absolute top-0 right-0 w-[400px] h-[400px] bg-violet-600/10 rounded-full blur-[100px] -translate-y-1/2 translate-x-1/3"></div>}
+        {isDarkMode && <div className="absolute top-0 right-0 w-[300px] md:w-[400px] h-[300px] md:h-[400px] bg-violet-600/10 rounded-full blur-[100px] -translate-y-1/2 translate-x-1/3"></div>}
         
-        <div className="relative z-10 flex flex-col md:flex-row justify-between items-center gap-8">
-          <div className="text-center md:text-left">
-            <h1 className={`text-4xl md:text-5xl font-black tracking-tight flex items-center justify-center md:justify-start gap-4 ${
+        <div className="relative z-10 flex flex-col xl:flex-row justify-between items-center gap-6">
+          <div className="text-center xl:text-left">
+            <h1 className={`text-3xl md:text-5xl font-black tracking-tight flex items-center justify-center xl:justify-start gap-4 ${
               isDarkMode ? "text-white" : "text-slate-900"
             }`}>
-              <Zap className="text-violet-500" size={40} />
+              <Zap className="text-violet-500" size={32} />
               {nombreEmpresa} <span className="text-violet-600">POS</span>
             </h1>
-            <p className="text-slate-500 font-bold uppercase tracking-[0.2em] text-[10px] mt-3">
-              Sistema Profesional • Snayder Cedeño • Milagro • UNEMI
+            <p className="text-slate-500 font-bold uppercase tracking-[0.2em] text-[9px] md:text-[10px] mt-2 md:mt-3">
+              Sistema Profesional • Milagro • UNEMI
             </p>
           </div>
           
-          <div className={`px-12 py-6 rounded-[2rem] border text-center min-w-[260px] shrink-0 transition-all shadow-inner ${
+          <div className={`px-8 md:px-12 py-4 md:py-6 rounded-[1.5rem] md:rounded-[2rem] border text-center min-w-[220px] md:min-w-[260px] shrink-0 transition-all shadow-inner ${
             isDarkMode ? "bg-slate-950/80 border-violet-500/30" : "bg-slate-50 border-slate-200"
           }`}>
-            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 mb-2 block">
+            <span className="text-[9px] md:text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 mb-1 md:mb-2 block">
               Monto Base (Sin IVA)
             </span>
-            <p className={`text-5xl font-black tracking-tighter ${
+            <p className={`text-3xl md:text-5xl font-black tracking-tighter ${
               isDarkMode ? "text-white" : "text-violet-700"
             }`}>
               ${subtotalTotal.toFixed(2)}
@@ -137,15 +138,17 @@ function PosPage({ isDarkMode, config, showToast, authFetch }) { // 👈 Recibe 
         </div>
       </header>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <div className="lg:col-span-2 space-y-6">
-          <div className={`flex flex-col md:flex-row items-center justify-between gap-6 p-6 rounded-3xl border transition-all ${
+      <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6 md:gap-10">
+        
+        {/* MATRIZ DE PRODUCTOS */}
+        <div className="lg:col-span-1 xl:col-span-2 space-y-6 md:space-y-8">
+          <div className={`flex flex-col sm:flex-row items-center justify-between gap-4 md:gap-6 p-4 md:p-6 rounded-[1.5rem] md:rounded-3xl border transition-all ${
             isDarkMode ? "bg-slate-900/40 border-white/5" : "bg-white border-slate-200 shadow-sm"
           }`}>
-            <h2 className={`text-lg font-bold flex items-center gap-3 uppercase tracking-widest ${isDarkMode ? "text-slate-200" : "text-slate-700"}`}>
-              <Package className="text-violet-500" size={20} /> Inventario
+            <h2 className={`text-md md:text-lg font-bold flex items-center gap-3 uppercase tracking-widest ${isDarkMode ? "text-slate-200" : "text-slate-700"}`}>
+              <Package className="text-violet-500" size={20} /> Catálogo
             </h2>
-            <div className="relative w-full md:w-96">
+            <div className="relative w-full sm:w-72 md:w-96">
               <Search className="absolute left-4 top-3 text-slate-400" size={18} />
               <input 
                 type="text" placeholder="Filtrar componentes..." 
@@ -159,53 +162,53 @@ function PosPage({ isDarkMode, config, showToast, authFetch }) { // 👈 Recibe 
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-            {loading ? <div className="p-20 text-center animate-pulse font-black text-xs uppercase tracking-[0.2em]">Cargando Hardware...</div> :
+          <div className="grid grid-cols-1 sm:grid-cols-2 2xl:grid-cols-3 gap-4 md:gap-6">
+            {loading ? <div className="p-20 text-center animate-pulse font-black text-xs uppercase tracking-[0.2em] col-span-full">Cargando Hardware...</div> :
              productosFiltrados.map(prod => (
-              <div key={prod.id} className={`group relative p-6 rounded-[2.5rem] border transition-all duration-300 ${
+              <div key={prod.id} className={`group relative p-5 md:p-6 rounded-[2rem] md:rounded-[2.5rem] border transition-all duration-300 ${
                 isDarkMode 
                 ? "bg-slate-900/60 border-white/5 hover:border-violet-500/40 shadow-xl shadow-black/20" 
                 : "bg-white border-slate-200 hover:border-violet-400 shadow-md"
               }`}>
-                <div className={`h-44 rounded-3xl mb-5 flex items-center justify-center overflow-hidden border transition-all ${
+                <div className={`h-36 md:h-44 rounded-2xl md:rounded-3xl mb-4 md:mb-5 flex items-center justify-center overflow-hidden border transition-all ${
                   isDarkMode ? "bg-slate-950/50 border-white/5" : "bg-slate-50 border-slate-100"
                 }`}>
                   <img 
                     src={prod.imagen?.startsWith('http') ? prod.imagen : `http://localhost:8000${prod.imagen}`} 
-                    className="w-full h-full object-contain p-6 group-hover:scale-110 transition-transform duration-700" 
+                    className="w-full h-full object-contain p-4 md:p-6 group-hover:scale-110 transition-transform duration-700" 
                     alt="" 
                   />
                 </div>
                 
-                <div className="flex justify-between items-center mb-3">
-                  <span className={`text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-wider ${
+                <div className="flex justify-between items-center mb-2 md:mb-3">
+                  <span className={`text-[8px] md:text-[9px] font-black px-2 md:px-3 py-1 rounded-full uppercase tracking-wider ${
                     isDarkMode ? "bg-violet-500/10 text-violet-400" : "bg-violet-50 text-violet-600"
                   }`}>
                     {prod.categoria}
                   </span>
-                  <span className={`text-[10px] font-bold uppercase ${
+                  <span className={`text-[9px] md:text-[10px] font-bold uppercase ${
                     prod.stock <= prod.stock_minimo ? "text-red-500 animate-pulse" : "text-slate-500"
                   }`}>
                     Stock: {prod.stock}
                   </span>
                 </div>
 
-                <h3 className={`font-black text-lg leading-tight mb-6 h-12 overflow-hidden transition-colors ${
+                <h3 className={`font-black text-sm md:text-lg leading-tight mb-4 md:mb-6 h-10 md:h-12 overflow-hidden transition-colors ${
                   isDarkMode ? "text-white group-hover:text-violet-400" : "text-slate-800 group-hover:text-violet-600"
                 }`}>
                   {prod.nombre}
                 </h3>
 
-                <div className={`flex justify-between items-center pt-5 border-t ${isDarkMode ? "border-white/5" : "border-slate-100"}`}>
-                  <span className={`text-3xl font-black tracking-tighter ${isDarkMode ? "text-white" : "text-slate-900"}`}>
+                <div className={`flex justify-between items-center pt-4 md:pt-5 border-t ${isDarkMode ? "border-white/5" : "border-slate-100"}`}>
+                  <span className={`text-2xl md:text-3xl font-black tracking-tighter ${isDarkMode ? "text-white" : "text-slate-900"}`}>
                     ${parseFloat(prod.precio).toFixed(2)}
                   </span>
                   <button 
                     onClick={() => agregarAlCarrito(prod)} 
                     disabled={prod.stock <= 0} 
-                    className="bg-violet-600 text-white p-4 rounded-2xl hover:bg-violet-500 shadow-lg shadow-violet-600/30 active:scale-90 disabled:opacity-20 transition-all"
+                    className="bg-violet-600 text-white p-3 md:p-4 rounded-xl md:rounded-2xl hover:bg-violet-500 shadow-lg shadow-violet-600/30 active:scale-90 disabled:opacity-20 transition-all"
                   >
-                    <ShoppingCart size={22} />
+                    <ShoppingCart size={20} />
                   </button>
                 </div>
               </div>
@@ -213,31 +216,28 @@ function PosPage({ isDarkMode, config, showToast, authFetch }) { // 👈 Recibe 
           </div>
         </div>
 
+        {/* SIDEBAR DE CARRITO - ADAPTABLE */}
         <aside className="relative">
-          <div className={`sticky top-8 p-8 rounded-[3rem] border transition-all min-h-[600px] flex flex-col ${
+          <div className={`sticky top-8 p-6 md:p-8 rounded-[2rem] md:rounded-[3rem] border transition-all min-h-[500px] md:min-h-[600px] flex flex-col ${
             isDarkMode 
             ? "bg-slate-900/80 backdrop-blur-xl border-white/10 shadow-2xl" 
             : "bg-white border-slate-200 shadow-xl shadow-slate-300/50"
           }`}>
-            <h2 className={`text-2xl font-black mb-8 flex items-center gap-3 ${isDarkMode ? "text-white" : "text-slate-800"}`}>
+            <h2 className={`text-xl md:text-2xl font-black mb-6 md:mb-8 flex items-center gap-3 ${isDarkMode ? "text-white" : "text-slate-800"}`}>
               <Sparkles className="text-violet-500" size={24} /> Carrito
             </h2>
 
-            <div className={`mb-8 p-6 rounded-[2rem] border space-y-6 transition-all ${
+            <div className={`mb-6 md:mb-8 p-4 md:p-6 rounded-[1.5rem] md:rounded-[2rem] border space-y-4 md:space-y-6 transition-all ${
               isDarkMode ? "bg-slate-950/50 border-white/5" : "bg-slate-50 border-slate-100 shadow-inner"
             }`}>
               
               <div>
-                <label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 mb-3 block">
-                  Asignar Cliente
-                </label>
+                <label className="text-[9px] md:text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 mb-2 md:mb-3 block">Asignar Cliente</label>
                 <div className="relative">
                   <User className="absolute left-4 top-3.5 text-slate-400" size={16} />
                   <select 
-                    className={`w-full pl-12 pr-5 py-3 rounded-2xl border outline-none font-bold text-xs transition-all appearance-none ${
-                      isDarkMode 
-                      ? "bg-slate-900 border-white/10 text-white focus:border-violet-500" 
-                      : "bg-white border-slate-200 text-slate-900 focus:border-violet-500 shadow-sm"
+                    className={`w-full pl-12 pr-5 py-3 rounded-2xl border outline-none font-bold text-xs appearance-none ${
+                      isDarkMode ? "bg-slate-900 border-white/10 text-white focus:border-violet-500" : "bg-white border-slate-200 text-slate-900 focus:border-violet-500"
                     }`}
                     value={clienteSeleccionado?.id || ""}
                     onChange={(e) => {
@@ -247,18 +247,14 @@ function PosPage({ isDarkMode, config, showToast, authFetch }) { // 👈 Recibe 
                     }}
                   >
                     <option value="">Consumidor Final</option>
-                    {clientes.map(cli => (
-                      <option key={cli.id} value={cli.id}>{cli.nombre} - {cli.identificacion}</option>
-                    ))}
+                    {clientes.map(cli => <option key={cli.id} value={cli.id}>{cli.nombre}</option>)}
                   </select>
                 </div>
               </div>
 
               <div>
-                <label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 mb-3 block">
-                  Forma de Pago
-                </label>
-                <div className="grid grid-cols-3 gap-3">
+                <label className="text-[9px] md:text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 mb-2 md:mb-3 block">Forma de Pago</label>
+                <div className="grid grid-cols-3 gap-2 md:gap-3">
                   {[
                     { id: 'EFECTIVO', icon: Banknote, label: 'Efectivo' },
                     { id: 'TRANSFERENCIA', icon: RefreshCcw, label: 'Transf.' },
@@ -267,82 +263,67 @@ function PosPage({ isDarkMode, config, showToast, authFetch }) { // 👈 Recibe 
                     <button
                       key={tipo.id}
                       onClick={() => setMetodoPago(tipo.id)}
-                      className={`flex flex-col items-center justify-center p-3 rounded-2xl border transition-all gap-2 ${
+                      className={`flex flex-col items-center justify-center p-2 md:p-3 rounded-xl md:rounded-2xl border transition-all gap-1 md:gap-2 ${
                         metodoPago === tipo.id 
-                        ? (isDarkMode ? "bg-violet-600 border-violet-500 text-white" : "bg-violet-600 border-violet-600 text-white shadow-lg shadow-violet-600/30")
+                        ? "bg-violet-600 border-violet-600 text-white shadow-lg"
                         : (isDarkMode ? "bg-slate-900 border-white/5 text-slate-400" : "bg-white border-slate-200 text-slate-500")
                       }`}
                     >
-                      <tipo.icon size={18} />
-                      <span className="text-[9px] font-black uppercase tracking-tighter">{tipo.label}</span>
+                      <tipo.icon size={16} />
+                      <span className="text-[8px] md:text-[9px] font-black uppercase tracking-tighter">{tipo.label}</span>
                     </button>
                   ))}
                 </div>
               </div>
 
-              {/* INDICADOR DE CRÉDITO DINÁMICO */}
               {clienteSeleccionado && metodoPago === 'CREDITO' && (
-                <div className={`p-4 rounded-2xl border animate-in slide-in-from-bottom-2 ${
+                <div className={`p-3 md:p-4 rounded-xl md:rounded-2xl border animate-in slide-in-from-bottom-2 ${
                   isDarkMode ? "bg-violet-500/10 border-violet-500/20" : "bg-violet-50 border-violet-100"
                 }`}>
                   <div className="flex justify-between items-center mb-1">
-                    <span className="text-[9px] font-black uppercase text-violet-500 tracking-widest">Cupo Disponible:</span>
-                    <span className={`text-xs font-black ${isDarkMode ? "text-white" : "text-slate-900"}`}>
-                      ${parseFloat(clienteSeleccionado.cupo_disponible).toFixed(2)}
-                    </span>
+                    <span className="text-[8px] md:text-[9px] font-black uppercase text-violet-500">Disponible:</span>
+                    <span className={`text-xs font-black ${isDarkMode ? "text-white" : "text-slate-900"}`}>${parseFloat(clienteSeleccionado.cupo_disponible).toFixed(2)}</span>
                   </div>
-                  <div className="w-full h-1.5 bg-slate-200 dark:bg-slate-900 rounded-full mt-2 overflow-hidden">
-                    <div 
-                      className="h-full bg-violet-500" 
-                      style={{ width: `${Math.min(100, (clienteSeleccionado.cupo_disponible / clienteSeleccionado.cupo_credito) * 100)}%` }}
-                    ></div>
+                  <div className="w-full h-1 bg-slate-200 dark:bg-slate-900 rounded-full mt-2 overflow-hidden">
+                    <div className="h-full bg-violet-500 transition-all duration-1000" style={{ width: `${Math.min(100, (clienteSeleccionado.cupo_disponible / clienteSeleccionado.cupo_credito) * 100)}%` }}></div>
                   </div>
                 </div>
               )}
             </div>
             
-            <div className="flex-1 space-y-4 overflow-y-auto pr-2 custom-scrollbar">
+            <div className="flex-1 space-y-3 md:space-y-4 overflow-y-auto pr-2 custom-scrollbar">
               {carrito.length === 0 ? (
-                <div className="h-full flex flex-col items-center justify-center opacity-10 text-center py-20 grayscale">
-                  <ShoppingCart size={80} className="mb-6" />
-                  <p className="font-black uppercase tracking-[0.2em] text-xs">Esperando Orden</p>
+                <div className="h-full flex flex-col items-center justify-center opacity-10 text-center py-10 md:py-20 grayscale">
+                  <ShoppingCart size={60} md:size={80} className="mb-6" />
+                  <p className="font-black uppercase tracking-[0.2em] text-[10px] md:text-xs">Esperando Orden</p>
                 </div>
               ) : (
                 carrito.map((item, idx) => (
-                  <div key={idx} className={`flex justify-between items-center p-4 rounded-[1.8rem] border transition-all animate-in slide-in-from-right-4 ${
+                  <div key={idx} className={`flex justify-between items-center p-3 md:p-4 rounded-2xl md:rounded-[1.8rem] border transition-all ${
                     isDarkMode ? "bg-white/5 border-white/5" : "bg-slate-50 border-slate-100"
                   }`}>
-                    <div className="flex items-center gap-4 overflow-hidden">
-                      <div className={`w-12 h-12 rounded-2xl p-2 shrink-0 ${isDarkMode ? "bg-slate-950" : "bg-white border"}`}>
+                    <div className="flex items-center gap-3 md:gap-4 overflow-hidden">
+                      <div className={`w-10 h-10 md:w-12 md:h-12 rounded-xl md:rounded-2xl p-2 shrink-0 ${isDarkMode ? "bg-slate-950" : "bg-white border"}`}>
                         <img src={item.imagen} className="w-full h-full object-contain" alt="" />
                       </div>
                       <div className="truncate">
-                        <p className={`font-bold text-xs truncate ${isDarkMode ? "text-white" : "text-slate-900"}`}>{item.nombre}</p>
-                        <p className="text-[11px] text-violet-500 font-black uppercase tracking-widest">${parseFloat(item.precio).toFixed(2)}</p>
+                        <p className={`font-bold text-[10px] md:text-xs truncate ${isDarkMode ? "text-white" : "text-slate-900"}`}>{item.nombre}</p>
+                        <p className="text-[10px] md:text-[11px] text-violet-500 font-black uppercase tracking-widest">${parseFloat(item.precio).toFixed(2)}</p>
                       </div>
                     </div>
-                    <button onClick={() => quitarDelCarrito(item.id)} className="text-slate-400 hover:text-red-500 transition-colors ml-3 shrink-0">
-                      <Trash2 size={16} />
-                    </button>
+                    <button onClick={() => quitarDelCarrito(item.id)} className="text-slate-400 hover:text-red-500 ml-2 shrink-0"><Trash2 size={14} /></button>
                   </div>
                 ))
               )}
             </div>
 
             {carrito.length > 0 && (
-              <div className={`mt-10 pt-8 border-t space-y-6 ${isDarkMode ? "border-white/10" : "border-slate-200"}`}>
+              <div className={`mt-6 md:mt-10 pt-6 md:pt-8 border-t space-y-4 md:space-y-6 ${isDarkMode ? "border-white/10" : "border-slate-200"}`}>
                 <div className="text-right">
-                  <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Total Liquidación (IVA {ivaPorcentaje}%)</p>
-                  <p className={`text-5xl font-black tracking-tighter ${isDarkMode ? "text-white" : "text-slate-950"}`}>
-                    ${totalConIva}
-                  </p>
+                  <p className="text-[9px] md:text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">IVA {ivaPorcentaje}% Inc.</p>
+                  <p className={`text-4xl md:text-5xl font-black tracking-tighter ${isDarkMode ? "text-white" : "text-slate-950"}`}>${totalConIva}</p>
                 </div>
-                <button 
-                  onClick={procesarVentaFinal} 
-                  className="w-full bg-gradient-to-br from-violet-600 to-indigo-700 text-white py-6 rounded-[2.2rem] font-black text-lg shadow-2xl shadow-violet-600/40 hover:bg-violet-500 transition-all active:scale-95 uppercase tracking-widest"
-                >
-                  Finalizar Venta
-                </button>
+                <button onClick={procesarVentaFinal} className="w-full bg-gradient-to-br from-violet-600 to-indigo-700 text-white py-4 md:py-6 rounded-2xl md:rounded-[2.2rem] font-black text-sm md:text-lg shadow-2xl shadow-violet-600/40 hover:bg-violet-500 transition-all active:scale-95 uppercase tracking-widest">Finalizar</button>
               </div>
             )}
           </div>
@@ -351,21 +332,19 @@ function PosPage({ isDarkMode, config, showToast, authFetch }) { // 👈 Recibe 
 
       {showModal && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/90 backdrop-blur-xl p-6">
-          <div className={`w-full max-sm:max-w-xs max-w-sm rounded-[3rem] p-10 border text-center animate-in zoom-in duration-300 ${isDarkMode ? "bg-slate-900 border-white/10 shadow-2xl shadow-black" : "bg-white border-slate-200 shadow-2xl"}`}>
-            <div className="w-20 h-20 bg-green-500/20 text-green-500 rounded-full flex items-center justify-center mx-auto mb-6">
-              <CheckCircle size={40} />
+          <div className={`w-full max-sm:max-w-xs max-w-sm rounded-[3rem] p-8 md:p-10 border text-center animate-in zoom-in duration-300 ${isDarkMode ? "bg-slate-900 border-white/10 shadow-2xl shadow-black" : "bg-white border-slate-200 shadow-2xl"}`}>
+            <div className="w-16 h-16 md:w-20 md:h-20 bg-green-500/20 text-green-500 rounded-full flex items-center justify-center mx-auto mb-6">
+              <CheckCircle size={32} md:size={40} />
             </div>
-            <h3 className={`text-2xl font-black mb-2 ${isDarkMode ? "text-white" : "text-slate-900"}`}>¡Venta Exitosa!</h3>
-            <p className="text-slate-500 text-sm font-bold uppercase tracking-widest mb-8">Base de Datos Milagro Actualizada</p>
-            <button onClick={() => setShowModal(false)} className="w-full bg-slate-800 text-white py-4 rounded-2xl font-black text-xs uppercase tracking-widest">
-              Continuar
-            </button>
+            <h3 className={`text-xl md:text-2xl font-black mb-2 ${isDarkMode ? "text-white" : "text-slate-900"}`}>¡Venta Exitosa!</h3>
+            <p className="text-slate-500 text-xs md:text-sm font-bold uppercase tracking-widest mb-8">Stock actualizado correctamente</p>
+            <button onClick={() => setShowModal(false)} className="w-full bg-slate-800 text-white py-4 rounded-2xl font-black text-xs uppercase tracking-widest">Continuar</button>
           </div>
         </div>
       )}
 
       <style>{`
-        .custom-scrollbar::-webkit-scrollbar { width: 5px; }
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
         .custom-scrollbar::-webkit-scrollbar-thumb { 
           background-color: ${isDarkMode ? "#1e1b4b" : "#cbd5e1"}; 
           border-radius: 10px; 

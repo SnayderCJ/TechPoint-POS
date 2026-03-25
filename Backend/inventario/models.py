@@ -72,6 +72,7 @@ class GlobalConfig(models.Model):
     nombre_negocio = models.CharField(max_length=100, default="TechPoint POS")
     iva_porcentaje = models.DecimalField(max_digits=5, decimal_places=2, default=15.00)
     direccion = models.CharField(max_length=255, default="Milagro, Guayas, Ecuador")
+    email_notificaciones = models.EmailField(default="admin@example.com") # 👈 Nuevo
     last_backup = models.DateTimeField(auto_now=True)
 
     def save(self, *args, **kwargs):

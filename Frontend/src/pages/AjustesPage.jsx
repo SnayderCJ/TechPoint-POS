@@ -1,14 +1,15 @@
 import { useState, useEffect } from 'react';
-import { Settings, Save, Shield, Database, Store, MapPin, Percent, RefreshCw } from 'lucide-react';
+import { Settings, Save, Shield, Database, Store, MapPin, Percent, RefreshCw, Mail } from 'lucide-react';
 
-function AjustesPage({ isDarkMode, showToast, authFetch }) { // 👈 Recibe authFetch
+function AjustesPage({ isDarkMode, showToast, authFetch }) { 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [backingUp, setBackingUp] = useState(false);
   const [config, setConfig] = useState({
     nombre_negocio: '',
     iva_porcentaje: '',
-    direccion: ''
+    direccion: '',
+    email_notificaciones: ''
   });
 
   useEffect(() => {
@@ -47,7 +48,6 @@ function AjustesPage({ isDarkMode, showToast, authFetch }) { // 👈 Recibe auth
     
     try {
       const response = await authFetch('http://localhost:8000/api/backup/');
-      
       if (response.ok) {
         const blob = await response.blob();
         const url = window.URL.createObjectURL(blob);
@@ -81,7 +81,7 @@ function AjustesPage({ isDarkMode, showToast, authFetch }) { // 👈 Recibe auth
       </header>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
-        <section className={`p-10 rounded-[3rem] border transition-all ${isDarkMode ? "bg-slate-900/50 border-white/10" : "bg-white border-slate-200 shadow-xl"}`}>
+        <section className={`p-10 rounded-[3rem] border transition-all ${isDarkMode ? "bg-slate-900/50 border-white/10 shadow-2xl" : "bg-white border-slate-200 shadow-xl"}`}>
           <h2 className="text-xl font-black mb-8 flex items-center gap-3">
             <Store className="text-violet-500" /> Datos del Negocio
           </h2>
@@ -127,6 +127,20 @@ function AjustesPage({ isDarkMode, showToast, authFetch }) { // 👈 Recibe auth
                   value={config.direccion} 
                   onChange={e => setConfig({...config, direccion: e.target.value})}
                   className={`w-full pl-14 pr-6 py-4 rounded-2xl border outline-none font-bold text-sm ${isDarkMode ? "bg-slate-950 border-white/10 text-white" : "bg-slate-50 border-slate-200"}`}
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2 border-t border-slate-200 dark:border-white/5 pt-6">
+              <label className="text-[10px] font-black uppercase text-violet-500 ml-2 tracking-widest">Email de Notificaciones Stock (RF 3.4)</label>
+              <div className="relative mt-2">
+                <Mail className="absolute left-5 top-4.5 text-slate-400" size={18} />
+                <input 
+                  type="email"
+                  value={config.email_notificaciones} 
+                  onChange={e => setConfig({...config, email_notificaciones: e.target.value})}
+                  className={`w-full pl-14 pr-6 py-4 rounded-2xl border outline-none font-bold text-sm ${isDarkMode ? "bg-slate-950 border-white/10 text-white focus:border-violet-500" : "bg-slate-50 border-slate-200"}`}
+                  placeholder="ejemplo@correo.com"
                 />
               </div>
             </div>

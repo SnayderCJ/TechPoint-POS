@@ -41,4 +41,4 @@ class AuditLogAdmin(admin.ModelAdmin):
 
 @admin.register(GlobalConfig)
 class GlobalConfigAdmin(admin.ModelAdmin):
-    list_display = ('nombre_negocio', 'iva_porcentaje', 'last_backup')
+    list_display = ('nombre_negocio', 'iva_porcentaje', 'email_notificaciones', 'last_backup')

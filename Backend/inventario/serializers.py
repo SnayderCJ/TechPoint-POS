@@ -78,7 +78,7 @@ class VentaSerializer(serializers.ModelSerializer):
 class GlobalConfigSerializer(serializers.ModelSerializer):
     class Meta:
         model = GlobalConfig
-        fields = ['nombre_negocio', 'iva_porcentaje', 'direccion', 'last_backup']
+        fields = ['nombre_negocio', 'iva_porcentaje', 'direccion', 'email_notificaciones', 'last_backup']
 
 class AuditLogSerializer(serializers.ModelSerializer):
     class Meta:

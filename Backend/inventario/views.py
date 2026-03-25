@@ -3,6 +3,7 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from django.db import transaction
 from django.db.models import Sum
+from django.core.mail import send_mail # 👈 Nuevo
 import decimal
 from .models import Producto, Venta, DetalleVenta, GlobalConfig, Cliente, Abono, AuditLog
 from .serializers import ProductoSerializer, VentaSerializer, GlobalConfigSerializer, ClienteSerializer, AbonoSerializer, AuditLogSerializer
@@ -13,6 +14,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 import subprocess
 import datetime
 
+# 🔐 CLASE DE PERMISO PERSONALIZADA
 class IsAdminUser(permissions.BasePermission):
     def has_permission(self, request, view):
         return bool(request.user and request.user.is_superuser)
@@ -94,39 +96,46 @@ class VentaViewSet(viewsets.ModelViewSet):
 
         try:
             with transaction.atomic():
-                cliente = None
-                if cliente_id:
-                    # Bloqueamos el registro del cliente para evitar colisiones de crédito
-                    cliente = Cliente.objects.select_for_update().get(id=cliente_id)
-
-                # 🛡️ REFUERZO DE VALIDACIÓN DE CRÉDITO (RNF 4.1)
+                cliente = Cliente.objects.select_for_update().get(id=cliente_id) if cliente_id else None
                 if metodo_pago == 'CREDITO':
-                    if not cliente:
-                        return Response({'error': 'Venta a crédito requiere un cliente seleccionado.'}, status=400)
-                    
-                    # Suma de deuda actual DIRECTO en la base de datos para máxima precisión
+                    if not cliente: return Response({'error': 'Cliente requerido para crédito.'}, status=400)
                     deuda_actual = Venta.objects.filter(cliente=cliente).aggregate(Sum('saldo_pendiente'))['saldo_pendiente__sum'] or 0
-                    cupo_disponible = cliente.cupo_credito - deuda_actual
-                    
-                    if total_venta > cupo_disponible:
-                        return Response({
-                            'error': f'Crédito insuficiente. Disponible: ${cupo_disponible:.2f}, Intento de compra: ${total_venta:.2f}'
-                        }, status=400)
+                    if total_venta > (cliente.cupo_credito - deuda_actual):
+                        return Response({'error': 'Crédito insuficiente.'}, status=400)
 
-                # Crear Venta
                 nueva_venta = Venta.objects.create(total=total_venta, cliente=cliente, metodo_pago=metodo_pago)
+                productos_bajo_stock = []
 
                 for item in items:
                     producto = Producto.objects.select_for_update().get(id=item['id'])
-                    cant = item.get('cantidad', 1)
-                    if producto.stock < cant: raise Exception(f"Sin stock para {producto.nombre}")
-                    producto.stock -= cant
+                    producto.stock -= item.get('cantidad', 1)
                     producto.save()
-                    DetalleVenta.objects.create(venta=nueva_venta, producto=producto, cantidad=cant, precio_unitario=producto.precio, costo_unitario=producto.precio_compra)
+                    
+                    # 👈 RF 3.4: Verificar Stock Crítico
+                    if producto.stock <= producto.stock_minimo:
+                        productos_bajo_stock.append(producto)
+
+                    DetalleVenta.objects.create(venta=nueva_venta, producto=producto, cantidad=item.get('cantidad', 1), precio_unitario=producto.precio, costo_unitario=producto.precio_compra)
+
+                # 👈 RF 3.4: Enviar Correo de Alerta
+                if productos_bajo_stock:
+                    self.enviar_alerta_stock(productos_bajo_stock)
 
             return Response(self.get_serializer(nueva_venta).data, status=201)
-        except Exception as e:
-            return Response({'error': str(e)}, status=400)
+        except Exception as e: return Response({'error': str(e)}, status=400)
+
+    def enviar_alerta_stock(self, productos):
+        config = GlobalConfig.objects.get(pk=1)
+        subject = f"⚠️ ALERTA DE STOCK CRÍTICO - {config.nombre_negocio}"
+        message = "Los siguientes productos han llegado a su límite mínimo:\n\n"
+        for p in productos:
+            message += f"- {p.nombre}: Quedan {p.stock} unidades (Mínimo: {p.stock_minimo})\n"
+        
+        message += f"\nPor favor, reponga el stock a la brevedad.\nSistema TechPoint POS"
+        
+        try:
+            send_mail(subject, message, 'techpoint-alerts@example.com', [config.email_notificaciones], fail_silently=True)
+        except: pass
 
 class ConfigView(APIView):
     def get(self, request):
