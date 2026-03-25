@@ -73,5 +73,5 @@ El sistema implementa un modelo de **Control de Acceso Basado en Roles (RBAC)**:
 
 ## 👨‍💻 Autor
 **Snayder Cedeño**  
-*Desarrollador de Software • Milagro, Ecuador*  
-*Proyecto desarrollado para TechPoint • UNEMI*
+*Desarrollador de Software • Ecuador*  
+*Proyecto desarrollado para Ventas *
