@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { ShoppingCart, Search, Package, CheckCircle, Zap, Trash2, Sparkles, Cpu, Loader2, User, CreditCard, Banknote, RefreshCcw, X } from 'lucide-react';
+import { ShoppingCart, Search, Package, CheckCircle, Zap, Trash2, Sparkles, Cpu, Loader2, User, CreditCard, Banknote, RefreshCcw, X, Plus, Minus } from 'lucide-react';
 
 function PosPage({ isDarkMode, config, showToast, authFetch }) { 
   const [busqueda, setBusqueda] = useState(""); 
@@ -40,31 +40,52 @@ function PosPage({ isDarkMode, config, showToast, authFetch }) {
   }, []);
 
   const agregarAlCarrito = (producto) => {
-    const enCarrito = carrito.filter(p => p.id === producto.id).length;
-    if (enCarrito >= producto.stock) {
+    const itemExistente = carrito.find(p => p.id === producto.id);
+    const cantidadEnCarrito = itemExistente ? itemExistente.cantidad : 0;
+
+    if (cantidadEnCarrito >= producto.stock) {
       showToast("Stock insuficiente en inventario", "error"); 
       return;
     }
-    setCarrito([...carrito, producto]);
-  };
 
-  const quitarDelCarrito = (id) => {
-    const index = carrito.findIndex(p => p.id === id);
-    if (index > -1) {
-      const nuevoCarrito = [...carrito];
-      nuevoCarrito.splice(index, 1);
-      setCarrito(nuevoCarrito);
+    if (itemExistente) {
+      setCarrito(carrito.map(p => 
+        p.id === producto.id ? { ...p, cantidad: p.cantidad + 1 } : p
+      ));
+    } else {
+      setCarrito([...carrito, { ...producto, cantidad: 1 }]);
     }
   };
 
-  const subtotalTotal = carrito.reduce((acc, p) => acc + parseFloat(p.precio), 0);
+  const actualizarCantidad = (id, delta) => {
+    const item = carrito.find(p => p.id === id);
+    const productoOriginal = productos.find(p => p.id === id);
+
+    if (delta > 0 && item.cantidad >= productoOriginal.stock) {
+      showToast("Límite de stock alcanzado", "error");
+      return;
+    }
+
+    if (item.cantidad + delta <= 0) {
+      setCarrito(carrito.filter(p => p.id !== id));
+    } else {
+      setCarrito(carrito.map(p => 
+        p.id === id ? { ...p, cantidad: p.cantidad + delta } : p
+      ));
+    }
+  };
+
+  const eliminarDelCarrito = (id) => {
+    setCarrito(carrito.filter(p => p.id !== id));
+  };
+
+  const subtotalTotal = carrito.reduce((acc, p) => acc + (parseFloat(p.precio) * p.cantidad), 0);
   const totalConIva = (subtotalTotal * (1 + (ivaPorcentaje / 100))).toFixed(2);
 
   const procesarVentaFinal = async () => {
-    const idsUnicos = [...new Set(carrito.map(p => p.id))];
-    const items = idsUnicos.map(id => ({
-      id: id,
-      cantidad: carrito.filter(p => p.id === id).length
+    const items = carrito.map(p => ({
+      id: p.id,
+      cantidad: p.cantidad
     }));
 
     try {
@@ -216,7 +237,7 @@ function PosPage({ isDarkMode, config, showToast, authFetch }) {
           </div>
         </div>
 
-        {/* SIDEBAR DE CARRITO - ADAPTABLE */}
+        {/* SIDEBAR DE CARRITO - MEJORADO */}
         <aside className="relative">
           <div className={`sticky top-8 p-6 md:p-8 rounded-[2rem] md:rounded-[3rem] border transition-all min-h-[500px] md:min-h-[600px] flex flex-col ${
             isDarkMode 
@@ -227,6 +248,7 @@ function PosPage({ isDarkMode, config, showToast, authFetch }) {
               <Sparkles className="text-violet-500" size={24} /> Carrito
             </h2>
 
+            {/* SECCIÓN CLIENTE Y PAGO */}
             <div className={`mb-6 md:mb-8 p-4 md:p-6 rounded-[1.5rem] md:rounded-[2rem] border space-y-4 md:space-y-6 transition-all ${
               isDarkMode ? "bg-slate-950/50 border-white/5" : "bg-slate-50 border-slate-100 shadow-inner"
             }`}>
@@ -291,27 +313,39 @@ function PosPage({ isDarkMode, config, showToast, authFetch }) {
               )}
             </div>
             
+            {/* CARRITO AGRUPADO */}
             <div className="flex-1 space-y-3 md:space-y-4 overflow-y-auto pr-2 custom-scrollbar">
               {carrito.length === 0 ? (
                 <div className="h-full flex flex-col items-center justify-center opacity-10 text-center py-10 md:py-20 grayscale">
-                  <ShoppingCart size={60} md:size={80} className="mb-6" />
+                  <ShoppingCart size={60} className="mb-6" />
                   <p className="font-black uppercase tracking-[0.2em] text-[10px] md:text-xs">Esperando Orden</p>
                 </div>
               ) : (
-                carrito.map((item, idx) => (
-                  <div key={idx} className={`flex justify-between items-center p-3 md:p-4 rounded-2xl md:rounded-[1.8rem] border transition-all ${
+                carrito.map((item) => (
+                  <div key={item.id} className={`p-4 rounded-2xl border transition-all animate-in slide-in-from-right-4 ${
                     isDarkMode ? "bg-white/5 border-white/5" : "bg-slate-50 border-slate-100"
                   }`}>
-                    <div className="flex items-center gap-3 md:gap-4 overflow-hidden">
-                      <div className={`w-10 h-10 md:w-12 md:h-12 rounded-xl md:rounded-2xl p-2 shrink-0 ${isDarkMode ? "bg-slate-950" : "bg-white border"}`}>
-                        <img src={item.imagen} className="w-full h-full object-contain" alt="" />
+                    <div className="flex justify-between items-start mb-3">
+                      <div className="flex items-center gap-3 overflow-hidden">
+                        <div className={`w-10 h-10 rounded-xl p-1.5 shrink-0 ${isDarkMode ? "bg-slate-950" : "bg-white border"}`}>
+                          <img src={item.imagen} className="w-full h-full object-contain" alt="" />
+                        </div>
+                        <div className="truncate">
+                          <p className={`font-bold text-[10px] md:text-xs truncate ${isDarkMode ? "text-white" : "text-slate-900"}`}>{item.nombre}</p>
+                          <p className="text-[10px] text-violet-500 font-black uppercase tracking-widest">${parseFloat(item.precio).toFixed(2)}</p>
+                        </div>
                       </div>
-                      <div className="truncate">
-                        <p className={`font-bold text-[10px] md:text-xs truncate ${isDarkMode ? "text-white" : "text-slate-900"}`}>{item.nombre}</p>
-                        <p className="text-[10px] md:text-[11px] text-violet-500 font-black uppercase tracking-widest">${parseFloat(item.precio).toFixed(2)}</p>
-                      </div>
+                      <button onClick={() => eliminarDelCarrito(item.id)} className="text-slate-400 hover:text-red-500 transition-colors"><Trash2 size={14} /></button>
                     </div>
-                    <button onClick={() => quitarDelCarrito(item.id)} className="text-slate-400 hover:text-red-500 ml-2 shrink-0"><Trash2 size={14} /></button>
+
+                    <div className="flex items-center justify-between bg-white/5 dark:bg-slate-950/50 p-2 rounded-xl border border-white/5">
+                      <div className="flex items-center gap-3">
+                        <button onClick={() => actualizarCantidad(item.id, -1)} className="w-7 h-7 rounded-lg bg-slate-200 dark:bg-slate-800 flex items-center justify-center hover:bg-violet-500 hover:text-white transition-all"><Minus size={12}/></button>
+                        <span className="font-black text-xs min-w-[20px] text-center">{item.cantidad}</span>
+                        <button onClick={() => actualizarCantidad(item.id, 1)} className="w-7 h-7 rounded-lg bg-slate-200 dark:bg-slate-800 flex items-center justify-center hover:bg-violet-500 hover:text-white transition-all"><Plus size={12}/></button>
+                      </div>
+                      <p className="text-xs font-black text-slate-500 tracking-tighter">Sub: ${(item.precio * item.cantidad).toFixed(2)}</p>
+                    </div>
                   </div>
                 ))
               )}
